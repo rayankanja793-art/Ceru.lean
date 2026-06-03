@@ -192,3 +192,135 @@ DASHBOARD_PAGE = PREMIUM_CSS + """
             <div style="display:flex; gap:10px;">
                 <div style="flex:1;">
                     <label style="font-size:12px; color:#8fa0b5;">Market Prediction</label>
+                    <select name="prediction" id="pred_select" class="input-field">
+                        <option value="1">Home Win (1)</option>
+                        <option value="X">Draw (X)</option>
+                        <option value="2">Away Win (2)</option>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#8fa0b5;">Stake Value (KSh)</label>
+                    <input type="number" name="stake" min="5" value="50" class="input-field" required>
+                </div>
+            </div>
+            <button type="submit" class="action-btn">Place Virtual Stake & Simulate Match</button>
+        </form>
+    </div>
+
+    <div class="bet-slip-panel" style="background:#131f2d;">
+        <h4 style="margin:0 0 10px 0; color:#00ff66;">💸 Fast M-Pesa Wallet Deposit</h4>
+        <form method="POST" action="/deposit" style="display:flex; gap:10px; align-items:center;">
+            <input type="number" name="amount" min="10" placeholder="Amount (KSh)" class="input-field" style="margin:0;" required>
+            <button type="submit" class="action-btn" style="width:150px; background:#00cc52; color:white;">Deposit</button>
+        </form>
+    </div>
+</div>
+"""
+
+# ==========================================
+# 5. ROUTING & CONTROLLER INTERCEPTORS
+# ==========================================
+@app.route('/')
+def home():
+    if 'email' in session:
+        user = USERS_DB.get(session['email'])
+        if user:
+            return render_template_string(DASHBOARD_PAGE, balance=user['balance'], matches=MATCH_LIST, msg=request.args.get('msg'), error=request.args.get('error'))
+    return redirect(url_for('login'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email']
+        phone = request.form['phone']
+        password = request.form['password']
+        if email in USERS_DB:
+            return render_template_string(LOGIN_REG_BASE, error="Email already exists.", content="<a href='/login'>Go to Login</a>")
+        USERS_DB[email] = {'phone': phone, 'password': password, 'balance': 0.05} # Starting credit matching image profile state
+        session['email'] = email
+        return redirect(url_for('home', msg="Welcome to Ligi Bigi! Account activated."))
+    
+    content = """
+    <h2 style="margin-top:0;">Create Account</h2>
+    <form method="POST">
+        <label>Email Address</label><input type="email" name="email" class="input-field" required placeholder="name@domain.com">
+        <label>M-Pesa Number</label><input type="text" name="phone" class="input-field" required placeholder="0712345678">
+        <label>Password</label><input type="password" name="password" class="input-field" required placeholder="••••••••">
+        <button type="submit" class="action-btn">Register</button>
+    </form>
+    <p style="text-align:center; font-size:13px; margin-top:15px;"><a href="/login" style="color:#00ff66; text-decoration:none;">Already have an account? Login</a></p>
+    """
+    return render_template_string(LOGIN_REG_BASE, content=content)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        if email in USERS_DB and USERS_DB[email]['password'] == password:
+            session['email'] = email
+            return redirect(url_for('home'))
+        return render_template_string(LOGIN_REG_BASE, error="Invalid credentials.")
+    
+    content = """
+    <h2 style="margin-top:0;">Account Login</h2>
+    <form method="POST">
+        <label>Email</label><input type="email" name="email" class="input-field" required>
+        <label>Password</label><input type="password" name="password" class="input-field" required>
+        <button type="submit" class="action-btn">Login</button>
+    </form>
+    <p style="text-align:center; font-size:13px; margin-top:15px;"><a href="/register" style="color:#00ff66; text-decoration:none;">New user? Register here</a></p>
+    """
+    return render_template_string(LOGIN_REG_BASE, content=content)
+
+@app.route('/deposit', methods=['POST'])
+def deposit():
+    if 'email' not in session: return redirect(url_for('login'))
+    amount = float(request.form['amount'])
+    USERS_DB[session['email']]['balance'] += amount
+    return redirect(url_for('home', msg=f"Deposit Confirmed! Credited KSh {amount} successfully."))
+
+@app.route('/place-bet', methods=['POST'])
+def place_bet():
+    if 'email' not in session: return redirect(url_for('login'))
+    user = USERS_DB[session['email']]
+    match = request.form['match']
+    prediction = request.form['prediction']
+    stake = float(request.form['stake'])
+    
+    if user['balance'] < stake:
+        return redirect(url_for('home', error="Insufficient balance for this stake!"))
+    
+    user['balance'] -= stake
+    home_team, away_team = match.split(" vs ")
+    h_g, a_g = simulate_match(home_team, away_team)
+    
+    actual_outcome = "X"
+    if h_g > a_g: actual_outcome = "1"
+    elif h_g < a_g: actual_outcome = "2"
+    
+    # Simple dynamic multiplier lookup matching odds scale factor
+    odds_payout = 2.50
+    for h, a, o1, oX, o2 in MATCH_LIST:
+        if h == home_team:
+            if prediction == "1": odds_payout = float(o1)
+            elif prediction == "X": odds_payout = float(oX)
+            elif prediction == "2": odds_payout = float(o2)
+
+    if prediction == actual_outcome:
+        winnings = stake * odds_payout
+        user['balance'] += winnings
+        result_msg = f"🎉 WINNER! Result: {home_team} {h_g} - {a_g} {away_team}. Won KSh {winnings:,.2f}!"
+    else:
+        result_msg = f"❌ Lost. Result: {home_team} {h_g} - {a_g} {away_team}. Better luck next ticket!"
+        
+    return redirect(url_for('home', msg=result_msg))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
