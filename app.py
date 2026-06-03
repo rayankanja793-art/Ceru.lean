@@ -1,10 +1,9 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash
-import threading
 import time
 
 app = Flask(__name__)
 
-# CRITICAL FIX: Explicit configuration for secure cookie handling on Render
+# Explicit configuration for secure cookie handling on Render
 app.config.update(
     SECRET_KEY='swiftpitch_super_secret_key_2026',
     SESSION_COOKIE_SECURE=False,  
@@ -23,32 +22,36 @@ users = {
 }
 bets = [] 
 
-# --- SIMULATION STATE ---
+# --- SIMULATION STATE (TIMESTAMP BASED) ---
 state = {
-    'phase': 'BETTING',
-    'time': 60,
-    'is_running': False,
-    'round': 1
+    'is_running': True, # Changed to True by default so you don't even need to click start!
+    'start_time': time.time()
 }
 
-def simulation_engine():
-    while True:
-        if state['is_running']:
-            time.sleep(1)
-            state['time'] -= 1
-            if state['time'] <= 0:
-                if state['phase'] == 'BETTING':
-                    state['phase'] = 'PLAYING'
-                    state['time'] = 55
-                else:
-                    state['phase'] = 'BETTING'
-                    state['time'] = 60
-                    state['round'] += 1
-        else:
-            time.sleep(1)
-
-# Start background thread
-threading.Thread(target=simulation_engine, daemon=True).start()
+def get_current_match_state():
+    """Calculates the exact match time dynamically using the system clock.
+    This guarantees it never freezes on cloud servers like Render."""
+    if not state['is_running']:
+        return {'phase': 'BETTING', 'time': 60, 'round': 1}
+        
+    elapsed = int(time.time() - state['start_time'])
+    total_loop_time = 115 # 60s betting + 55s playing
+    
+    current_round = (elapsed // total_loop_time) + 1
+    time_into_current_loop = elapsed % total_loop_time
+    
+    if time_into_current_loop < 60:
+        phase = 'BETTING'
+        time_left = 60 - time_into_current_loop
+    else:
+        phase = 'PLAYING'
+        time_left = 115 - time_into_current_loop
+        
+    return {
+        'phase': phase,
+        'time': time_left,
+        'round': current_round
+    }
 
 # --- ROUTES ---
 
@@ -58,7 +61,8 @@ def index():
         return redirect(url_for('login'))
     
     current_user_data = users[session['user']]
-    return render_template('index.html', state=state, user=current_user_data)
+    current_state = get_current_match_state()
+    return render_template('index.html', state=current_state, user=current_user_data)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -137,27 +141,33 @@ def admin():
         action = request.form.get('action')
         if action == 'start':
             state['is_running'] = True
+            state['start_time'] = time.time()
         elif action == 'stop':
             state['is_running'] = False
             
-    return render_template('admin.html', state=state)
+    current_state = get_current_match_state()
+    # Add status compatibility for the admin template layout toggle
+    current_state['is_running'] = state['is_running']
+    return render_template('admin.html', state=current_state)
 
 @app.route('/api/state')
 def get_state():
-    if state['phase'] == 'PLAYING':
-        if state['time'] > 45:
+    current_state = get_current_match_state()
+    
+    if current_state['phase'] == 'PLAYING':
+        if current_state['time'] > 45:
             commentary = ["[05'] Match kicked off! Both teams looking sharp.", "[12'] Juventus dictating the tempo early on."]
-        elif state['time'] > 20:
+        elif current_state['time'] > 20:
             commentary = ["[24'] ⚽ GOAL! Juventus takes the lead! 1-0", "[38'] Inter Milan hitting the post on a counter-attack!"]
         else:
             commentary = ["[44'] AC Milan pressing hard before the whistle.", "[45+1'] Halftime whistle blows! Players heading down the tunnel."]
     else:
-        commentary = [f"[System] Round #{state['round']} match clearing. Next kickoff in {state['time']}s.", "[System] Market pools open. Acceptable placement limits active."]
+        commentary = [f"[System] Round #{current_state['round']} match clearing. Next kickoff in {current_state['time']}s.", "[System] Market pools open. Acceptable placement limits active."]
 
     return {
-        'phase': state['phase'],
-        'time': state['time'],
-        'round': state['round'],
+        'phase': current_state['phase'],
+        'time': current_state['time'],
+        'round': current_state['round'],
         'logs': commentary
     }
 
