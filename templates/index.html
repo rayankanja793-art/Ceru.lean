@@ -1,132 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Virtual Football Betting</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #223245; padding-bottom: 15px; margin-bottom: 20px; }
-        h1 { color: #ffcc00; margin: 0; font-size: 28px; }
-        h2 { color: #ffcc00; font-size: 20px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #223245; padding-bottom: 5px; }
-        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
-        .card { background-color: #16222f; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #223245; }
-        .btn { background-color: #ffcc00; color: black; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
-        .btn:hover { background-color: #e6b800; }
-        .timer { font-size: 24px; color: #00ff66; font-weight: bold; }
-        .alert { background-color: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; color: #ffcc00; padding: 12px; border-radius: 5px; margin-bottom: 15px; }
-        .logout-btn { color: #ff3333; text-decoration: none; font-weight: bold; font-size: 14px; }
-        .bet-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #223245; font-size: 14px; }
-        .status { font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
-        .status-open { background-color: rgba(255, 204, 0, 0.2); color: #ffcc00; }
-        .status-won { background-color: rgba(0, 255, 102, 0.2); color: #00ff66; }
-        .status-lost { background-color: rgba(255, 51, 51, 0.2); color: #ff3333; }
-        input[type="number"] { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #223245; background-color: #0c131c; color: white; box-sizing: border-box; margin-bottom: 10px; }
-        .admin-link { display: inline-block; background-color: #ff3333; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-bottom: 15px; }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <div class="header">
-            <h1>SWIFTPITCH</h1>
-            <div>
-                <span style="margin-right: 15px; color: #a0aec0;">Account Dashboard</span>
-                <a href="/logout" class="logout-btn">Log Out →</a>
-            </div>
-        </div>
-
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        {% if user and user.is_admin %}
-            <a href="/admin" class="admin-link">🛠️ Go to Match Simulation Controls (Admin Only)</a>
-        {% endif %}
-
-        <div class="grid">
-            <div>
-                <div class="card">
-                    <h2>Live Match Center (Italian Simulation)</h2>
-                    <p>Current Engine State: <strong style="color: #ffcc00;">{{ state.phase }} PHASE</strong></p>
-                    <p>Time Remaining: <span class="timer">{{ state.time }}s</span></p>
-                    <p>League Round Sequence: <strong>Round #{{ state.round }}</strong></p>
-                    
-                    <div style="background-color: #0c131c; padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px solid #223245;">
-                        {% if state.phase == 'PLAYING' %}
-                            <h4 style="color: #00ff66; margin: 0 0 10px 0;">⚽ LIVE MATCHES IN PROGRESS</h4>
-                            <div class="bet-row"><span>Juventus vs AC Milan</span><strong style="color: #00ff66;">1 - 0</strong></div>
-                            <div class="bet-row"><span>Inter vs AS Roma</span><strong style="color: #00ff66;">2 - 2</strong></div>
-                        {% else %}
-                            <h4 style="color: #ffcc00; margin: 0 0 10px 0;">⏳ PENDING MATCHES (NEXT ROUND)</h4>
-                            <div class="bet-row"><span>AC Milan vs Inter</span><span>Kickoff in {{ state.time }}s</span></div>
-                            <div class="bet-row"><span>AS Roma vs Juventus</span><span>Kickoff in {{ state.time }}s</span></div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h2>Your Bet History Slips</h2>
-                    
-                    <h4 style="color: #ffcc00; margin-bottom: 5px;">Open Bets</h4>
-                    <div class="bet-row">
-                        <span>Round #{{ state.round }} - Juventus (Win)</span>
-                        <span class="status status-open">PENDING</span>
-                    </div>
-
-                    <h4 style="color: #00ff66; margin-top: 15px; margin-bottom: 5px;">Won Bets</h4>
-                    <div class="bet-row">
-                        <span>Round #0 - Inter Milan vs AC Milan (Over 2.5)</span>
-                        <span class="status status-won">+180 KSH</span>
-                    </div>
-
-                    <h4 style="color: #ff3333; margin-top: 15px; margin-bottom: 5px;">Lost Bets</h4>
-                    <div class="bet-row">
-                        <span>Round #0 - AS Roma (Win)</span>
-                        <span class="status status-lost">0 KSH</span>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <div class="card">
-                    <h2>Your Wallet</h2>
-                    <p>Available Balance: <strong style="font-size: 22px; color: #00ff66;">{{ user.balance if user else 0 }} KSH</strong></p>
-                    
-                    {% if user and not user.bonus_unlocked %}
-                        <div style="background-color: rgba(255,204,0,0.1); padding: 10px; border-radius: 5px; font-size: 13px; color: #ffcc00; border: 1px solid rgba(255,204,0,0.3);">
-                            ⚠️ Your 100 KSH registration bonus is locked! Deposit at least 50 KSH to unlock it.
-                        </div>
-                    {% else %}
-                        <div style="background-color: rgba(0,255,102,0.1); padding: 10px; border-radius: 5px; font-size: 13px; color: #00ff66; border: 1px solid rgba(0,255,102,0.3);">
-                            🎉 Registration bonus fully unlocked! Minimum withdrawal is 100 KSH.
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="card">
-                    <h2>M-Pesa Deposit</h2>
-                    <form action="/deposit" method="POST">
-                        <label style="display:block; margin-bottom: 5px; color:#a0aec0; font-size:14px;">Deposit Amount (KSH)</label>
-                        <input type="number" name="amount" placeholder="Minimum 10 Bob" min="10" required>
-                        <button type="submit" class="btn">Process Deposit</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        setInterval(function() {
-            // Refreshes the window automatically every 1 second to fetch the live engine clock
-            location.reload();
-        }, 1000);
-    </script>
-</body>
-</html>
+<script>
+    // This updates the numbers smoothly without flashing the page
+    setInterval(function() {
+        fetch('/api/state')
+            .then(response => response.json())
+            .then(data => {
+                // Update the phase text
+                document.querySelector('.card:nth-child(2) p:nth-of-type(1)').innerHTML = 'Current Engine State: <strong style="color: #ffcc00;">' + data.phase + ' PHASE</strong>';
+                
+                // Update the timer numbers smoothly
+                document.querySelector('.timer').innerText = data.time + 's';
+                
+                // Update the round sequence
+                document.querySelector('.card:nth-child(2) p:nth-of-type(3) strong').innerText = 'Round #' + data.round;
+            })
+            .catch(err => console.log("Error fetching live time updates: ", err));
+    }, 1000); // Checks for the new second quietly in the background
+</script>
