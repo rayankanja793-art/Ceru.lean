@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftPitch Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; }
+        .card { background-color: #16222f; padding: 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #223245; }
+        .btn { background-color: #ffcc00; color: black; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .timer { font-size: 20px; color: #00ff66; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Welcome to SwiftPitch</h1>
+        <p>Logged in as: <strong>{{ user.password if user else 'Guest' }}</strong></p>
+        <p>Wallet Balance: <strong>{{ user.balance }} KSH</strong></p>
+        
+        {% if not user.bonus_unlocked %}
+            <p style="color: #ffcc00;">⚠️ Your 100 KSH bonus is locked. Deposit 50 KSH to unlock it!</p>
+        {% else %}
+            <p style="color: #00ff66;">✅ Your bonus is unlocked!</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Live Simulation Status</h2>
+        <p>Current Phase: <span class="timer">{{ state.phase }}</span></p>
+        <p>Time Remaining: <span class="timer" id="countdown">{{ state.time }}s</span></p>
+        <p>Current Round: <strong>#{{ state.round }}</strong></p>
+    </div>
+
+    <div class="card">
+        <h3>Simulate M-Pesa Deposit</h3>
+        <form action="/deposit" method="POST">
+            <input type="number" name="amount" placeholder="Amount (Min 10 Bob)" min="10" required style="padding: 8px; border-radius: 4px; border: none;">
+            <button type="submit" class="btn">Deposit</button>
+        </form>
+    </div>
+
+    <script>
+        setInterval(function() {
+            location.reload();
+        }, 1000); // Refreshes every 1 second to update the timer state
+    </script>
+</body>
+</html>
