@@ -153,3 +153,10 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
+@app.route('/api/state')
+def get_state():
+    return {
+        'phase': state['phase'],
+        'time': state['time'],
+        'round': state['round']
+    }
