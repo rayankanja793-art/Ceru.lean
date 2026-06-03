@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftPitch - Admin Control Panel</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #223245; padding-bottom: 10px; margin-bottom: 20px; }
+        h1 { color: #ffcc00; margin: 0; }
+        .card { background-color: #16222f; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #223245; }
+        .status-badge { padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+        .status-running { background-color: rgba(0, 255, 102, 0.2); color: #00ff66; border: 1px solid #00ff66; }
+        .status-stopped { background-color: rgba(255, 51, 51, 0.2); color: #ff3333; border: 1px solid #ff3333; }
+        .btn { border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; margin-right: 10px; }
+        .btn-start { background-color: #00ff66; color: black; }
+        .btn-stop { background-color: #ff3333; color: white; }
+        .btn-back { background-color: #a0aec0; color: black; text-decoration: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #223245; }
+        th { background-color: #0c131c; color: #ffcc00; }
+        .log-box { background-color: #0c131c; padding: 15px; border-radius: 5px; height: 150px; overflow-y: auto; font-family: 'Courier New', monospace; color: #a0aec0; border: 1px solid #223245; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>SwiftPitch Admin Panel</h1>
+        <a href="/" class="btn-back">← To Dashboard</a>
+    </div>
+
+    <div class="card">
+        <h2>Simulation Engine Master Controls</h2>
+        <p>Current Status: 
+            {% if state.is_running %}
+                <span class="status-badge status-running">RUNNING</span>
+            {% else %}
+                <span class="status-badge status-stopped">STOPPED</span>
+            {% endif %}
+        </p>
+        <p>Current Phase: <strong>{{ state.phase }}</strong> | Time Remaining: <strong>{{ state.time }}s</strong></p>
+        
+        <form action="/admin" method="POST" style="margin-top: 20px;">
+            {% if not state.is_running %}
+                <button type="submit" name="action" value="start" class="btn btn-start">▶ Start Simulation Engine</button>
+            {% else %}
+                <button type="submit" name="action" value="stop" class="btn btn-stop">⏸ Stop Simulation Engine</button>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Italian Teams Standings (Simulated Round #{{ state.round }})</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Team</th>
+                    <th>Played</th>
+                    <th>Won</th>
+                    <th>Draw</th>
+                    <th>Lost</th>
+                    <th>Points</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Juventus (Sim)</td><td>0</td><td>0</td><td>0</td><td>0</td><td><strong>0</strong></td></tr>
+                <tr><td>AC Milan (Sim)</td><td>0</td><td>0</td><td>0</td><td>0</td><td><strong>0</strong></td></tr>
+                <tr><td>Inter Milan (Sim)</td><td>0</td><td>0</td><td>0</td><td>0</td><td><strong>0</strong></td></tr>
+                <tr><td>AS Roma (Sim)</td><td>0</td><td>0</td><td>0</td><td>0</td><td><strong>0</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Live Match Log Feed</h2>
+        <div class="log-box">
+            <p>[System]: Engine initialized. Waiting for admin instruction...</p>
+            {% if state.is_running %}
+                <p style="color: #00ff66;">[Engine]: Active round {{ state.round }} loop running (55s match / 60s cooldown format).</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        setInterval(function() {
+            // Only reload if the engine is running to track active times live
+            if ("{{ state.is_running }}" === "True") {
+                location.reload();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
