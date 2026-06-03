@@ -19,6 +19,8 @@
         .logout-btn { color: #ff3333; text-decoration: none; font-weight: bold; font-size: 14px; }
         .bet-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #223245; font-size: 14px; }
         .admin-link { display: inline-block; background-color: #ff3333; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-bottom: 15px; }
+        /* Style for the new Live Ticker Log Feed Box */
+        .ticker-box { background-color: #0c131c; padding: 12px; border-radius: 5px; max-height: 120px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; color: #a0aec0; border: 1px solid #223245; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -52,12 +54,17 @@
                     <p>Time Remaining: <span class="timer" id="live-time">{{ state.time }}s</span></p>
                     <p>League Round Sequence: <strong id="live-round">Round #{{ state.round }}</strong></p>
                     
-                    <div style="background-color: #0c131c; padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px solid #223245;">
+                    <div style="background-color: #16222f; margin-top: 15px;">
                         <h4 id="match-header" style="color: #ffcc00; margin: 0 0 10px 0;">⏳ PENDING MATCHES (NEXT ROUND)</h4>
-                        <div id="match-list">
+                        <div id="match-list" style="margin-bottom: 15px;">
                             <div class="bet-row"><span>AC Milan vs Inter</span><span>Awaiting Kickoff</span></div>
                             <div class="bet-row"><span>AS Roma vs Juventus</span><span>Awaiting Kickoff</span></div>
                         </div>
+                    </div>
+
+                    <h4 style="color: #00ff66; margin: 15px 0 8px 0; font-size: 14px; letter-spacing: 0.5px;">📡 LIVE COMMENTARY TICKER FEED</h4>
+                    <div class="ticker-box" id="live-logs">
+                        <div>[System] Establishing connectivity sequence...</div>
                     </div>
                 </div>
 
@@ -99,12 +106,21 @@
                     return response.json();
                 })
                 .then(data => {
-                    // Update text values targets by exact ID attributes safely
                     document.getElementById('live-phase').innerText = data.phase + ' PHASE';
                     document.getElementById('live-time').innerText = data.time + 's';
                     document.getElementById('live-round').innerText = 'Round #' + data.round;
 
-                    // Dynamically swap the matches look depending on game phases
+                    // Dynamically update the log feed messages container quietly
+                    const logContainer = document.getElementById('live-logs');
+                    logContainer.innerHTML = ''; 
+                    data.logs.forEach(logLine => {
+                        const row = document.createElement('div');
+                        row.innerText = logLine;
+                        // Turn goal alerts bright green inside the feed box automatically
+                        if(logLine.includes('⚽ GOAL')) { row.style.color = '#00ff66'; row.style.fontWeight = 'bold'; }
+                        logContainer.appendChild(row);
+                    });
+
                     const matchHeader = document.getElementById('match-header');
                     const matchList = document.getElementById('match-list');
                     
