@@ -6,7 +6,7 @@
     <title>SwiftPitch - Dashboard</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1100px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #223245; padding-bottom: 15px; margin-bottom: 20px; }
         h1 { color: #ffcc00; margin: 0; font-size: 28px; }
         h2 { color: #ffcc00; font-size: 20px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #223245; padding-bottom: 5px; }
@@ -18,9 +18,8 @@
         .alert { background-color: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; color: #ffcc00; padding: 12px; border-radius: 5px; margin-bottom: 15px; }
         .logout-btn { color: #ff3333; text-decoration: none; font-weight: bold; font-size: 14px; }
         .bet-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #223245; font-size: 14px; }
-        .admin-link { display: inline-block; background-color: #ff3333; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-bottom: 15px; }
-        /* Style for the new Live Ticker Log Feed Box */
-        .ticker-box { background-color: #0c131c; padding: 12px; border-radius: 5px; max-height: 120px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; color: #a0aec0; border: 1px solid #223245; line-height: 1.6; }
+        .ticker-box { background-color: #0c131c; padding: 12px; border-radius: 5px; height: 100px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; color: #a0aec0; border: 1px solid #223245; line-height: 1.6; }
+        .match-scroll-box { max-height: 320px; overflow-y: auto; padding-right: 5px; }
     </style>
 </head>
 <body>
@@ -42,36 +41,31 @@
             {% endif %}
         {% endwith %}
 
-        {% if user and user.is_admin %}
-            <a href="/admin" class="admin-link">🛠️ Go to Match Simulation Controls (Admin Only)</a>
-        {% endif %}
-
         <div class="grid">
             <div>
                 <div class="card">
-                    <h2>Live Match Center (Italian Simulation)</h2>
+                    <h2>Live Match Center (League Simulation)</h2>
                     <p>Current Engine State: <strong id="live-phase" style="color: #ffcc00;">{{ state.phase }} PHASE</strong></p>
                     <p>Time Remaining: <span class="timer" id="live-time">{{ state.time }}s</span></p>
                     <p>League Round Sequence: <strong id="live-round">Round #{{ state.round }}</strong></p>
                     
                     <div style="background-color: #16222f; margin-top: 15px;">
-                        <h4 id="match-header" style="color: #ffcc00; margin: 0 0 10px 0;">⏳ PENDING MATCHES (NEXT ROUND)</h4>
-                        <div id="match-list" style="margin-bottom: 15px;">
-                            <div class="bet-row"><span>AC Milan vs Inter</span><span>Awaiting Kickoff</span></div>
-                            <div class="bet-row"><span>AS Roma vs Juventus</span><span>Awaiting Kickoff</span></div>
+                        <h4 id="match-header" style="color: #ffcc00; margin: 0 0 10px 0;">⏳ FIXTURES SCHEDULE</h4>
+                        
+                        <div class="match-scroll-box" id="match-list">
+                            {% for match in state.fixtures %}
+                                <div class="bet-row">
+                                    <span>{{ match.home }} vs {{ match.away }}</span>
+                                    <span>Awaiting Kickoff</span>
+                                </div>
+                            {% endfor %}
                         </div>
                     </div>
 
-                    <h4 style="color: #00ff66; margin: 15px 0 8px 0; font-size: 14px; letter-spacing: 0.5px;">📡 LIVE COMMENTARY TICKER FEED</h4>
+                    <h4 style="color: #00ff66; margin: 15px 0 8px 0; font-size: 14px;">📡 LIVE LEAGUE FEED</h4>
                     <div class="ticker-box" id="live-logs">
-                        <div>[System] Establishing connectivity sequence...</div>
+                        <div>[System] Connective synchronization ready...</div>
                     </div>
-                </div>
-
-                <div class="card">
-                    <h2>Your Bet History Slips</h2>
-                    <div class="bet-row"><span>Round #{{ state.round }} - Juventus (Win)</span><span style="color:#ffcc00;">PENDING</span></div>
-                    <div class="bet-row"><span>Round #0 - Inter vs AC Milan (Over 2.5)</span><span style="color:#00ff66;">+180 KSH</span></div>
                 </div>
             </div>
 
@@ -79,11 +73,10 @@
                 <div class="card">
                     <h2>Your Wallet</h2>
                     <p>Available Balance: <strong style="font-size: 22px; color: #00ff66;">{{ user.balance if user else 0 }} KSH</strong></p>
-                    
                     {% if user and not user.bonus_unlocked %}
-                        <p style="font-size: 13px; color: #ffcc00;">⚠️ Your 100 KSH bonus is locked! Deposit at least 50 KSH to unlock it.</p>
+                        <p style="font-size: 13px; color: #ffcc00;">⚠️ Deposit 50 KSH to unlock 100 KSH bonus.</p>
                     {% else %}
-                        <p style="font-size: 13px; color: #00ff66;">🎉 Registration bonus fully unlocked!</p>
+                        <p style="font-size: 13px; color: #00ff66;">🎉 Registration bonus active.</p>
                     {% endif %}
                 </div>
 
@@ -101,46 +94,53 @@
     <script>
         setInterval(function() {
             fetch('/api/state')
-                .then(response => {
-                    if (!response.ok) throw new Error('Network error');
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     document.getElementById('live-phase').innerText = data.phase + ' PHASE';
                     document.getElementById('live-time').innerText = data.time + 's';
                     document.getElementById('live-round').innerText = 'Round #' + data.round;
 
-                    // Dynamically update the log feed messages container quietly
+                    // Update live feed text
                     const logContainer = document.getElementById('live-logs');
                     logContainer.innerHTML = ''; 
                     data.logs.forEach(logLine => {
                         const row = document.createElement('div');
                         row.innerText = logLine;
-                        // Turn goal alerts bright green inside the feed box automatically
-                        if(logLine.includes('⚽ GOAL')) { row.style.color = '#00ff66'; row.style.fontWeight = 'bold'; }
                         logContainer.appendChild(row);
                     });
 
+                    // Update all 10 match fixtures rows cleanly
                     const matchHeader = document.getElementById('match-header');
                     const matchList = document.getElementById('match-list');
+                    matchList.innerHTML = ''; 
                     
                     if (data.phase === 'PLAYING') {
                         matchHeader.innerText = '⚽ LIVE MATCHES IN PROGRESS';
                         matchHeader.style.color = '#00ff66';
-                        matchList.innerHTML = `
-                            <div class="bet-row"><span>Juventus vs AC Milan</span><strong style="color: #00ff66;">1 - 0</strong></div>
-                            <div class="bet-row"><span>Inter vs AS Roma</span><strong style="color: #00ff66;">2 - 2</strong></div>
-                        `;
+                        
+                        data.fixtures.forEach(match => {
+                            matchList.innerHTML += `
+                                <div class="bet-row">
+                                    <span>${match.home} vs ${match.away}</span>
+                                    <strong style="color: #00ff66;">${match.home_score} - ${match.away_score}</strong>
+                                </div>
+                            `;
+                        });
                     } else {
                         matchHeader.innerText = '⏳ PENDING MATCHES (NEXT ROUND)';
                         matchHeader.style.color = '#ffcc00';
-                        matchList.innerHTML = `
-                            <div class="bet-row"><span>AC Milan vs Inter</span><span>Kickoff in ${data.time}s</span></div>
-                            <div class="bet-row"><span>AS Roma vs Juventus</span><span>Kickoff in ${data.time}s</span></div>
-                        `;
+                        
+                        data.fixtures.forEach(match => {
+                            matchList.innerHTML += `
+                                <div class="bet-row">
+                                    <span>${match.home} vs ${match.away}</span>
+                                    <span style="color: #a0aec0;">Kickoff in ${data.time}s</span>
+                                </div>
+                            `;
+                        });
                     }
                 })
-                .catch(err => console.log("Waiting for engine sync data..."));
+                .catch(err => console.log("Re-syncing with league table engine..."));
         }, 1000);
     </script>
 </body>
