@@ -3,65 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Admin Console</title>
+    <title>SwiftPitch - Sign In</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff3333; padding-bottom: 15px; margin-bottom: 20px; }
-        h1 { color: #ff3333; margin: 0; font-size: 26px; }
-        .card { background-color: #16222f; padding: 25px; border-radius: 8px; border: 1px solid #ff3333; margin-bottom: 20px; }
-        .btn { border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; margin-right: 10px; }
-        .btn-start { background-color: #00ff66; color: black; }
-        .btn-stop { background-color: #ff3333; color: white; }
-        .back-btn { color: #ffcc00; text-decoration: none; font-weight: bold; }
-        .status-indicator { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-bottom: 15px; }
+        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .login-container { background-color: #16222f; padding: 30px; border-radius: 8px; border: 1px solid #223245; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { color: #ffcc00; text-align: center; margin-top: 0; margin-bottom: 5px; font-size: 32px; letter-spacing: 1px; }
+        .subtitle { text-align: center; color: #a0aec0; font-size: 14px; margin-bottom: 25px; }
+        h2 { color: #fff; font-size: 18px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #223245; padding-bottom: 8px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #a0aec0; font-size: 14px; }
+        input[type="email"], input[type="password"] { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #223245; background-color: #0c131c; color: white; box-sizing: border-box; font-size: 14px; }
+        input:focus { border-color: #ffcc00; outline: none; }
+        .btn { background-color: #ffcc00; color: black; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; font-size: 15px; margin-top: 5px; }
+        .btn:hover { background-color: #e6b800; }
+        .alert { background-color: rgba(255, 51, 51, 0.15); border: 1px solid #ff3333; color: #ff3333; padding: 12px; border-radius: 5px; margin-bottom: 20px; font-size: 14px; text-align: center; }
+        .divider { border: 0; border-top: 1px solid #223245; margin: 25px 0; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- ADMIN HEADER -->
-        <div class="header">
-            <h1>🛠️ SWIFTPITCH SYSTEM CONTROLS</h1>
-            <a href="/" class="back-btn">← Return To Dashboard</a>
-        </div>
+    <div class="login-container">
+        <h1>SWIFTPITCH</h1>
+        <div class="subtitle">Virtual Football Betting Platform</div>
 
-        <div class="card">
-            <h2>Match Engine Master Controls</h2>
-            <p>Use these overrides to change or freeze global league cycles across all player devices instantly.</p>
-            
-            <!-- STATUS MONITOR -->
-            <div>
-                {% if state.is_running %}
-                    <span class="status-indicator" style="background-color: rgba(0, 255, 102, 0.2); color: #00ff66;">● ENGINE ACTIVE (RUNNING DYNAMICALLY)</span>
-                {% else %}
-                    <span class="status-indicator" style="background-color: rgba(255, 51, 51, 0.2); color: #ff3333;">■ ENGINE PAUSED (STUCK ON CURRENT STAGE)</span>
-                {% endif %}
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="/login" method="POST">
+            <h2>Sign In</h2>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" placeholder="example@mail.com" required>
             </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn">Login</button>
+        </form>
 
-            <p>Current Active Round: <strong>Round #{{ state.round }}</strong></p>
-            <p>Current Phase Status: <strong style="color: #ffcc00;">{{ state.phase }} PHASE</strong></p>
-            <p>Time Remaining in Sequence: <strong>{{ state.time }} seconds</strong></p>
+        <div class="divider"></div>
 
-            <hr style="border: 0; border-top: 1px solid #223245; margin: 20px 0;">
-
-            <!-- INTERACTIVE OVERRIDE TRIGGER BUTTONS -->
-            <form method="POST" action="/admin">
-                {% if state.is_running %}
-                    <button type="submit" name="action" value="stop" class="btn btn-stop">🛑 Force Stop & Pause Clock</button>
-                {% else %}
-                    <button type="submit" name="action" value="start" class="btn btn-start">▶ Start / Resume Simulation Engine</button>
-                {% endif %}
-            </form>
-        </div>
-
-        <!-- REFERENCE MATRIX CARD -->
-        <div class="card" style="border-color: #223245;">
-            <h3 style="margin-top: 0; color: #a0aec0;">System Overview Information</h3>
-            <p style="font-size: 14px; color: #a0aec0; line-height: 1.5;">
-                The platform is presently configured using a timestamp system. Pausing the engine records the current state configuration. Clicking 'Start' restarts the timeline baseline to resume automatic countdown operations seamlessly.
-            </p>
-        </div>
+        <form action="/register" method="POST">
+            <h2>Create New Account</h2>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" placeholder="newaccount@mail.com" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="Choose a secure password" required>
+            </div>
+            <button type="submit" class="btn" style="background-color: transparent; border: 2px solid #ffcc00; color: #ffcc00;">Register & Claim 100 KSH Bonus</button>
+        </form>
     </div>
 
 </body>
