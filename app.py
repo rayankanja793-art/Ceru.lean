@@ -1327,3 +1327,87 @@ def logout():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+from flask import Flask, request, render_template_string, redirect, session, url_for, jsonify
+import random, threading, time, os
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "ultra_secure_ligi_bigi_matrix_9988")
+
+# --- CORE DATA ---
+ALL_TEAMS = ['Roma', 'Juventus', 'Milan Reds', 'Torino', 'Fiorentina', 'Bologna', 'Sassuolo', 'Lazio', 'Verona', 'Atalanta', 'Monza', 'Cremonese', 'Lecce', 'Udinese', 'Spezia', 'Empoli', 'Napoli', 'Sampdoria', 'Salernitana', 'Milan Blues']
+LEAGUE_STANDINGS = {team: {"PTS": 0, "GD": 0, "GF": 0} for team in ALL_TEAMS}
+ENGINE_STATE = {
+    'round_number': 1, 'phase': 'BETTING', 'time_remaining': 60, 
+    'active_matches': [], 'continuous_enabled': True, 'forced_results': {}
+}
+lock = threading.Lock()
+
+# --- ENGINE LOGIC ---
+def generate_fixtures():
+    random.shuffle(ALL_TEAMS)
+    return [{'home': ALL_TEAMS[i], 'away': ALL_TEAMS[i+1], 'odds_1': f"{random.uniform(1.3, 4.5):.2f}"} for i in range(0, 20, 2)]
+
+ENGINE_STATE['active_matches'] = generate_fixtures()
+
+def engine_daemon():
+    while True:
+        time.sleep(1)
+        with lock:
+            if ENGINE_STATE['continuous_enabled']:
+                ENGINE_STATE['time_remaining'] -= 1
+                if ENGINE_STATE['time_remaining'] <= 0:
+                    if ENGINE_STATE['phase'] == 'BETTING':
+                        ENGINE_STATE['phase'] = 'LIVE'
+                        ENGINE_STATE['time_remaining'] = 37
+                    else:
+                        ENGINE_STATE['phase'] = 'BETTING'
+                        ENGINE_STATE['time_remaining'] = 60
+                        ENGINE_STATE['round_number'] += 1
+                        ENGINE_STATE['active_matches'] = generate_fixtures()
+                        ENGINE_STATE['forced_results'] = {}
+
+threading.Thread(target=engine_daemon, daemon=True).start()
+
+# --- ROUTES ---
+@app.route('/api/state')
+def api_state():
+    return jsonify({**ENGINE_STATE, 'standings': LEAGUE_STANDINGS})
+
+@app.route('/')
+def home():
+    return render_template_string(DASHBOARD_HTML)
+
+@app.route('/admin')
+def admin():
+    return render_template_string(ADMIN_HTML, state=ENGINE_STATE)
+
+@app.route('/admin/toggle', methods=['POST'])
+def toggle():
+    with lock: ENGINE_STATE['continuous_enabled'] = not ENGINE_STATE['continuous_enabled']
+    return redirect(url_for('admin'))
+
+# --- UI TEMPLATES ---
+DASHBOARD_HTML = """
+<style>body {background:#0c131c; color:#fff; font-family:sans-serif; text-align:center;}</style>
+<div id="banner" style="padding:20px; font-size:24px; font-weight:bold;"></div>
+<div id="standings"></div>
+<script>
+setInterval(() => {
+    fetch('/api/state').then(r => r.json()).then(data => {
+        document.getElementById('banner').innerText = data.phase + " PHASE: " + data.time_remaining + "s";
+        document.getElementById('banner').style.color = data.phase === 'BETTING' ? '#00ff66' : '#ff3333';
+    });
+}, 1000);
+</script>
+"""
+
+ADMIN_HTML = """
+<style>body {background:#16222f; color:#fff; padding:20px;}</style>
+<h1>Admin Control Room</h1>
+<form action="/admin/toggle" method="POST">
+    <button type="submit">Toggle Auto-Simulation ({{ 'ON' if state.continuous_enabled else 'OFF' }})</button>
+</form>
+<a href="/">Back to Dashboard</a>
+"""
+
+if __name__ == '__main__': app.run(host='0.0.0.0', port=5000)
