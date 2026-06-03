@@ -29,7 +29,8 @@ ENGINE_STATE = {
     'phase': 'BETTING',       
     'time_remaining': 60,     
     'active_matches': [],     
-    'forced_results': {}      
+    'forced_results': {},
+    'continuous_enabled': True  # New state flag tracking admin loop automation
 }
 
 lock = threading.Lock()
@@ -79,6 +80,10 @@ def continuous_loop_daemon():
     while True:
         time.sleep(1)
         with lock:
+            # If continuous simulation is disabled, pause all countdown increments completely
+            if not ENGINE_STATE.get('continuous_enabled', True):
+                continue
+                
             ENGINE_STATE['time_remaining'] -= 1
             
             if ENGINE_STATE['phase'] == 'BETTING' and ENGINE_STATE['time_remaining'] <= 0:
@@ -148,9 +153,10 @@ COMMON_CSS = """
     .wrapper { max-width: 950px; margin: 20px auto; padding: 0 15px; }
     .grid-matrix { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
     .card { background: #16222f; border-radius: 8px; border: 1px solid #223245; padding: 15px; margin-bottom: 15px; }
-    .timer-banner { text-align: center; font-size: 18px; font-weight: bold; padding: 10px; border-radius: 6px; margin-bottom: 15px; letter-spacing: 1px; transition: background 0.3s ease; }
-    .timer-banner.betting { background: #006633; color: white; }
-    .timer-banner.playing { background: #b20000; color: white; }
+    .timer-banner { text-align: center; font-size: 18px; font-weight: bold; padding: 12px; border-radius: 6px; margin-bottom: 15px; letter-spacing: 1px; transition: background 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .timer-banner.betting { background: #006633; color: white; border: 1px solid #00ff66; }
+    .timer-banner.playing { background: #b20000; color: white; border: 1px solid #ff3333; }
+    .timer-banner.paused { background: #445566; color: white; border: 1px solid #8899aa; }
     
     .table-match { width: 100%; border-collapse: collapse; margin-top: 10px; }
     .table-match th { text-align: left; background: #0f1822; padding: 10px; color: #8fa1b4; font-size: 12px; }
@@ -166,6 +172,12 @@ COMMON_CSS = """
     .badge.open { background: #ffcc00; color: black; }
     .badge.won { background: #00ff66; color: black; }
     .badge.lost { background: #ff3333; color: white; }
+    
+    /* Toggle switch CSS style block */
+    .switch-container { display: flex; align-items: center; justify-content: space-between; background: #111e2b; padding: 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #223245; }
+    .status-indicator { font-weight: bold; padding: 4px 10px; border-radius: 20px; font-size: 13px; }
+    .status-active { background: #006633; color: #00ff66; }
+    .status-paused { background: #553300; color: #ff9900; }
 </style>
 """
 
@@ -180,7 +192,7 @@ DASHBOARD_TEMPLATE = COMMON_CSS + """
 </div>
 
 <div class="wrapper">
-    <div id="live-timer-banner" class="timer-banner betting">Loading Virtual Match Data Stream...</div>
+    <div id="live-timer-banner" class="timer-banner betting">Loading Real-time Simulation Feed Data...</div>
 
     {% if msg %}<div style="background:#006633; padding:10px; border-radius:6px; margin-bottom:15px;">{{ msg }}</div>{% endif %}
     {% if error %}<div style="background:#b20000; padding:10px; border-radius:6px; margin-bottom:15px;">{{ error }}</div>{% endif %}
@@ -245,8 +257,7 @@ DASHBOARD_TEMPLATE = COMMON_CSS + """
 
             <div class="card">
                 <h4 style="margin-top:0; color:#8fa1b4;">🕒 Recent Results History Feed</h4>
-                <div id="history-feed-box" style="max-height:200px; overflow-y:auto; font-size:11px;">
-                    </div>
+                <div id="history-feed-box" style="max-height:200px; overflow-y:auto; font-size:11px;"></div>
             </div>
         </div>
     </div>
@@ -268,7 +279,7 @@ DASHBOARD_TEMPLATE = COMMON_CSS + """
                 {% for b in tickets %}
                 <tr>
                     <td>#{{ b.round }}</td>
-                    <td>Game Index Reference: Slot #{{ b.match_idx + 1 }}</td>
+                    <td>Game Reference: Slot #{{ b.match_idx + 1 }}</td>
                     <td>Market Pick: (<strong>{{ b.prediction }}</strong>)</td>
                     <td>KSh {{ b.stake }}</td>
                     <td>{{ b.odds }}</td>
@@ -324,44 +335,43 @@ function selectBet(matchIdx, selection, odds, label) {
     container.appendChild(div);
 }
 
-// Seamless dynamic fetching background execution system loop
 function syncEngineState() {
     fetch('/api/state')
         .then(response => response.json())
         .then(data => {
             currentPhase = data.phase;
             
-            // Auto reload cleanly ONCE only when the round changes to refresh betting grids and history lists cleanly
             if (currentRound !== 0 && currentRound !== data.round_number) {
                 location.reload();
                 return;
             }
             currentRound = data.round_number;
 
-            // 1. Update Top Banner elements smoothly
             let banner = document.getElementById('live-timer-banner');
+            let pauseWarning = data.continuous_enabled ? "" : " ⚠️ [SIMULATION FROZEN BY ADMIN]";
+
+            // Enhanced Two-Way Visual Countdown Engines
             if (data.phase === "BETTING") {
-                banner.className = "timer-banner betting";
-                banner.innerHTML = `⏳ BETTING WINDOW OPEN — ROUND ${data.round_number} (LOCKS IN ${data.time_remaining}s)`;
+                banner.className = data.continuous_enabled ? "timer-banner betting" : "timer-banner paused";
+                banner.innerHTML = `⏳ COUNTDOWN BEFORE START: Matches Kick-Off in exactly ${data.time_remaining} seconds! (Round #${data.round_number})${pauseWarning}`;
                 document.getElementById('market-lock-msg').style.display = 'none';
                 document.getElementById('submit-slip-btn').disabled = false;
                 document.getElementById('submit-slip-btn').style.background = "#ffcc00";
             } else {
-                banner.className = "timer-banner playing";
+                banner.className = data.continuous_enabled ? "timer-banner playing" : "timer-banner paused";
                 let matchMinute = Math.min(90, Math.floor((37 - data.time_remaining) * 2.43));
-                banner.innerHTML = `📺 SIMULATING LIVE MATCH RUNTIME — MINUTE ${matchMinute}' / 90'`;
+                banner.innerHTML = `📺 COUNTDOWN AFTER STARTING: Live Match Clock: ${matchMinute}' mins | Full-Time Whistle in: ${data.time_remaining}s${pauseWarning}`;
                 document.getElementById('market-lock-msg').style.display = 'block';
                 document.getElementById('submit-slip-btn').disabled = true;
                 document.getElementById('submit-slip-btn').style.background = "#444";
             }
 
-            // 2. Loop update team matchups and real-time live score lines
             data.active_matches.forEach((match, idx) => {
-                document.getElementById('home-name-{{ idx }}').innerText = match.home;
-                document.getElementById('away-name-{{ idx }}').innerText = match.away;
-                document.getElementById('o1-val-{{ idx }}').innerText = match.odds_1;
-                document.getElementById('ox-val-{{ idx }}').innerText = match.odds_X;
-                document.getElementById('o2-val-{{ idx }}').innerText = match.odds_2;
+                document.getElementById('home-name-' + idx).innerText = match.home;
+                document.getElementById('away-name-' + idx).innerText = match.away;
+                document.getElementById('o1-val-' + idx).innerText = match.odds_1;
+                document.getElementById('ox-val-' + idx).innerText = match.odds_X;
+                document.getElementById('o2-val-' + idx).innerText = match.odds_2;
 
                 let scoreSpace = document.getElementById('score-space-' + idx);
                 if (data.phase === "PLAYING") {
@@ -380,7 +390,6 @@ function syncEngineState() {
                 }
             });
 
-            // 3. Inject history list data items smoothly 
             let histBox = document.getElementById('history-feed-box');
             histBox.innerHTML = "";
             data.history.forEach(r => {
@@ -406,10 +415,29 @@ ADMIN_TEMPLATE = COMMON_CSS + """
     <a href="/" style="color:white; text-decoration:none;">Back to Live Market Grid</a>
 </div>
 <div class="wrapper" style="max-width:700px;">
-    <h2>Ligi Bigi System Override Controls</h2>
+    <h2>Ligi Bigi Overhaul Controller</h2>
+
+    <div class="switch-container">
+        <div>
+            <h3 style="margin:0; color:white;">Continuous Automation Engine</h3>
+            <p style="margin:4px 0 0 0; font-size:12px; color:#8fa1b4;">Toggle automatic match looping on/off</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            {% if state.continuous_enabled %}
+                <span class="status-indicator status-active">● RUNNING CONTINUOUSLY</span>
+            {% else %}
+                <span class="status-indicator status-paused">● SIMULATION FROZEN</span>
+            {% endif %}
+            <form method="POST" action="/admin/toggle-continuous" style="margin:0;">
+                <button type="submit" class="submit-btn" style="padding:8px 15px; font-size:13px; background:#fff; color:#000;">
+                    {% if state.continuous_enabled %}Pause Engine{% else %}Enable Continuous Run{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+
     <div class="card" style="background:#1c1212; border-color:#5a2d2d;">
-        <h3 style="color:#ff3333; margin-top:0;">Force System Manipulation Overrides</h3>
-        
+        <h3 style="color:#ff3333; margin-top:0;">Force Result Outcome Injection</h3>
         <form method="POST" action="/admin/force-outcome">
             <label>Select Target Active Game Match</label>
             <select name="match_index" class="input-field">
@@ -418,7 +446,7 @@ ADMIN_TEMPLATE = COMMON_CSS + """
                 {% endfor %}
             </select>
             
-            <label>Force Allocation Target Result Outcome</label>
+            <label>Force Allocation Outcome</label>
             <select name="forced_pick" class="input-field">
                 <option value="1">Force Home Team to Win (1)</option>
                 <option value="X">Force Fixed Draw Outcome (X)</option>
@@ -443,12 +471,12 @@ LOGIN_REG_BASE = COMMON_CSS + """
 # ==========================================
 @app.route('/api/state')
 def api_state():
-    """Background data pipeline API endpoint"""
     with lock:
         return jsonify({
             'round_number': ENGINE_STATE['round_number'],
             'phase': ENGINE_STATE['phase'],
             'time_remaining': ENGINE_STATE['time_remaining'],
+            'continuous_enabled': ENGINE_STATE.get('continuous_enabled', True),
             'active_matches': [{
                 'home': m['home'], 'away': m['away'],
                 'odds_1': m['odds_1'], 'odds_X': m['odds_X'], 'odds_2': m['odds_2'],
@@ -513,6 +541,15 @@ def admin_panel():
         return "Access Denied", 403
     return render_template_string(ADMIN_TEMPLATE, state=ENGINE_STATE)
 
+@app.route('/admin/toggle-continuous', methods=['POST'])
+def admin_toggle_continuous():
+    """Toggle API controller to pause/play background thread processing loops"""
+    if 'email' not in session or not USERS_DB.get(session['email'], {}).get('is_admin'):
+        return "Unauthorized", 403
+    with lock:
+        ENGINE_STATE['continuous_enabled'] = not ENGINE_STATE.get('continuous_enabled', True)
+    return redirect(url_for('admin_panel'))
+
 @app.route('/admin/force-outcome', methods=['POST'])
 def admin_force_outcome():
     if 'email' not in session or not USERS_DB.get(session['email'], {}).get('is_admin'):
@@ -555,7 +592,7 @@ def login():
         if email in USERS_DB and USERS_DB[email]['password'] == password:
             session['email'] = email
             return redirect(url_for('home'))
-        return render_template_string(LOGIN_REG_BASE, error="Invalid credentials matrix inputs.")
+        return render_template_string(LOGIN_REG_BASE, error="Invalid credentials inputs.")
     
     content = """
     <form method="POST">
