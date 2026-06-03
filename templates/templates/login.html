@@ -3,25 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Login / Register</title>
+    <title>SwiftPitch - Virtual Football Betting</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-        .auth-container { background-color: #16222f; padding: 30px; border-radius: 8px; border: 1px solid #223245; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { text-align: center; color: #ffcc00; margin-bottom: 20px; font-size: 28px; letter-spacing: 1px; }
-        h2 { color: #ffcc00; font-size: 20px; border-bottom: 1px solid #223245; padding-bottom: 5px; margin-top: 25px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-size: 14px; color: #a0aec0; }
-        input { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #223245; background-color: #0c131c; color: white; box-sizing: border-box; }
-        input:focus { border-color: #ffcc00; outline: none; }
-        .btn { background-color: #ffcc00; color: black; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; margin-top: 10px; transition: background 0.2s; }
+        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #223245; padding-bottom: 15px; margin-bottom: 20px; }
+        h1 { color: #ffcc00; margin: 0; font-size: 28px; }
+        h2 { color: #ffcc00; font-size: 20px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #223245; padding-bottom: 5px; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .card { background-color: #16222f; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #223245; }
+        .btn { background-color: #ffcc00; color: black; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
         .btn:hover { background-color: #e6b800; }
-        .alert { background-color: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; color: #ffcc00; padding: 10px; border-radius: 5px; margin-bottom: 20px; font-size: 14px; text-align: center; }
+        .timer { font-size: 24px; color: #00ff66; font-weight: bold; }
+        .alert { background-color: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; color: #ffcc00; padding: 12px; border-radius: 5px; margin-bottom: 15px; }
+        .logout-btn { color: #ff3333; text-decoration: none; font-weight: bold; font-size: 14px; }
+        .bet-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #223245; font-size: 14px; }
+        .status { font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+        .status-open { background-color: rgba(255, 204, 0, 0.2); color: #ffcc00; }
+        .status-won { background-color: rgba(0, 255, 102, 0.2); color: #00ff66; }
+        .status-lost { background-color: rgba(255, 51, 51, 0.2); color: #ff3333; }
+        input[type="number"] { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #223245; background-color: #0c131c; color: white; box-sizing: border-box; margin-bottom: 10px; }
+        .admin-link { display: inline-block; background-color: #ff3333; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-    <div class="auth-container">
-        <h1>SWIFTPITCH</h1>
+    <div class="container">
+        <div class="header">
+            <h1>SWIFTPITCH</h1>
+            <div>
+                <span style="margin-right: 15px; color: #a0aec0;">Account Dashboard</span>
+                <a href="/logout" class="logout-btn">Log Out →</a>
+            </div>
+        </div>
 
         {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -31,37 +46,19 @@
             {% endif %}
         {% endwith %}
 
-        <h2>Sign In</h2>
-        <form action="/login" method="POST">
-            <div class="form-group">
-                <label for="login-email">Email Address</label>
-                <input type="email" id="login-email" name="email" required placeholder="name@example.com">
-            </div>
-            <div class="form-group">
-                <label for="login-password">Password</label>
-                <input type="password" id="login-password" name="password" required placeholder="••••••••">
-            </div>
-            <button type="submit" class="btn">Login</button>
-        </form>
+        {% if user and user.is_admin %}
+            <a href="/admin" class="admin-link">🛠️ Go to Match Simulation Controls (Admin Only)</a>
+        {% endif %}
 
-        <h2>Create Account</h2>
-        <form action="/register" method="POST">
-            <div class="form-group">
-                <label for="reg-email">Email Address</label>
-                <input type="email" id="reg-email" name="email" required placeholder="name@example.com">
-            </div>
-            <div class="form-group">
-                <label for="reg-phone">Phone Number (M-Pesa)</label>
-                <input type="tel" id="reg-phone" name="phone" placeholder="e.g. 0712345678">
-            </div>
-            <div class="form-group">
-                <label for="reg-password">Password</label>
-                <input type="password" id="reg-password" name="password" required placeholder="••••••••">
-            </div>
-            <button type="submit" class="btn" style="background-color: #00ff66;">Register & Claim 100 KSH</button>
-        </form>
-
-    </div>
-
-</body>
-</html>
+        <div class="grid">
+            <div>
+                <div class="card">
+                    <h2>Live Match Center (Italian Simulation)</h2>
+                    <p>Current Engine State: <strong style="color: #ffcc00;">{{ state.phase }} PHASE</strong></p>
+                    <p>Time Remaining: <span class="timer">{{ state.time }}s</span></p>
+                    <p>League Round Sequence: <strong>Round #{{ state.round }}</strong></p>
+                    
+                    <div style="background-color: #0c131c; padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px solid #223245;">
+                        {% if state.phase == 'PLAYING' %}
+                            <h4 style="color: #00ff66; margin: 0 0 10px 0;">⚽ LIVE MATCHES IN PROGRESS</h4>
+                            <div class="bet-row"><span>Juventus vs AC Milan</span><strong style="color: #00ff66;">
