@@ -4,10 +4,10 @@ import time
 
 app = Flask(__name__)
 
-# CRITICAL FIX: Explicitly configuration for secure cookie handling on Render
+# CRITICAL FIX: Explicit configuration for secure cookie handling on Render
 app.config.update(
     SECRET_KEY='swiftpitch_super_secret_key_2026',
-    SESSION_COOKIE_SECURE=False,  # Set to True in production with HTTPS if needed
+    SESSION_COOKIE_SECURE=False,  
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
 )
@@ -54,7 +54,6 @@ threading.Thread(target=simulation_engine, daemon=True).start()
 
 @app.route('/')
 def index():
-    # If user session is empty or missing, bounce them cleanly to login page
     if 'user' not in session or session['user'] not in users:
         return redirect(url_for('login'))
     
@@ -67,7 +66,6 @@ def login():
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
         
-        # Simple authentication check
         if email in users and users[email]['password'] == password:
             session['user'] = email
             return redirect(url_for('index'))
@@ -75,7 +73,6 @@ def login():
             flash("Invalid email or password.")
             return redirect(url_for('login'))
             
-    # GET request renders the page cleanly now
     return render_template('login.html')
 
 @app.route('/register', methods=['POST'])
@@ -91,7 +88,6 @@ def register():
         flash("Email already registered. Please login.")
         return redirect(url_for('login'))
         
-    # Create new account with 100 KSH locked bonus
     users[email] = {
         'password': password, 
         'balance': 100, 
@@ -146,6 +142,25 @@ def admin():
             
     return render_template('admin.html', state=state)
 
+@app.route('/api/state')
+def get_state():
+    if state['phase'] == 'PLAYING':
+        if state['time'] > 45:
+            commentary = ["[05'] Match kicked off! Both teams looking sharp.", "[12'] Juventus dictating the tempo early on."]
+        elif state['time'] > 20:
+            commentary = ["[24'] ⚽ GOAL! Juventus takes the lead! 1-0", "[38'] Inter Milan hitting the post on a counter-attack!"]
+        else:
+            commentary = ["[44'] AC Milan pressing hard before the whistle.", "[45+1'] Halftime whistle blows! Players heading down the tunnel."]
+    else:
+        commentary = [f"[System] Round #{state['round']} match clearing. Next kickoff in {state['time']}s.", "[System] Market pools open. Acceptable placement limits active."]
+
+    return {
+        'phase': state['phase'],
+        'time': state['time'],
+        'round': state['round'],
+        'logs': commentary
+    }
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -153,10 +168,3 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True)
-@app.route('/api/state')
-def get_state():
-    return {
-        'phase': state['phase'],
-        'time': state['time'],
-        'round': state['round']
-    }
