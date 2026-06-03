@@ -1,18 +1,131 @@
-<script>
-    // This updates the numbers smoothly without flashing the page
-    setInterval(function() {
-        fetch('/api/state')
-            .then(response => response.json())
-            .then(data => {
-                // Update the phase text
-                document.querySelector('.card:nth-child(2) p:nth-of-type(1)').innerHTML = 'Current Engine State: <strong style="color: #ffcc00;">' + data.phase + ' PHASE</strong>';
-                
-                // Update the timer numbers smoothly
-                document.querySelector('.timer').innerText = data.time + 's';
-                
-                // Update the round sequence
-                document.querySelector('.card:nth-child(2) p:nth-of-type(3) strong').innerText = 'Round #' + data.round;
-            })
-            .catch(err => console.log("Error fetching live time updates: ", err));
-    }, 1000); // Checks for the new second quietly in the background
-</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftPitch - Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #223245; padding-bottom: 15px; margin-bottom: 20px; }
+        h1 { color: #ffcc00; margin: 0; font-size: 28px; }
+        h2 { color: #ffcc00; font-size: 20px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #223245; padding-bottom: 5px; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .card { background-color: #16222f; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #223245; }
+        .btn { background-color: #ffcc00; color: black; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
+        .timer { font-size: 24px; color: #00ff66; font-weight: bold; }
+        .alert { background-color: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; color: #ffcc00; padding: 12px; border-radius: 5px; margin-bottom: 15px; }
+        .logout-btn { color: #ff3333; text-decoration: none; font-weight: bold; font-size: 14px; }
+        .bet-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #223245; font-size: 14px; }
+        .admin-link { display: inline-block; background-color: #ff3333; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>SWIFTPITCH</h1>
+            <div>
+                <span style="margin-right: 15px; color: #a0aec0;">Live Platform</span>
+                <a href="/logout" class="logout-btn">Log Out →</a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if user and user.is_admin %}
+            <a href="/admin" class="admin-link">🛠️ Go to Match Simulation Controls (Admin Only)</a>
+        {% endif %}
+
+        <div class="grid">
+            <div>
+                <div class="card">
+                    <h2>Live Match Center (Italian Simulation)</h2>
+                    <p>Current Engine State: <strong id="live-phase" style="color: #ffcc00;">{{ state.phase }} PHASE</strong></p>
+                    <p>Time Remaining: <span class="timer" id="live-time">{{ state.time }}s</span></p>
+                    <p>League Round Sequence: <strong id="live-round">Round #{{ state.round }}</strong></p>
+                    
+                    <div style="background-color: #0c131c; padding: 15px; border-radius: 5px; margin-top: 15px; border: 1px solid #223245;">
+                        <h4 id="match-header" style="color: #ffcc00; margin: 0 0 10px 0;">⏳ PENDING MATCHES (NEXT ROUND)</h4>
+                        <div id="match-list">
+                            <div class="bet-row"><span>AC Milan vs Inter</span><span>Awaiting Kickoff</span></div>
+                            <div class="bet-row"><span>AS Roma vs Juventus</span><span>Awaiting Kickoff</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Your Bet History Slips</h2>
+                    <div class="bet-row"><span>Round #{{ state.round }} - Juventus (Win)</span><span style="color:#ffcc00;">PENDING</span></div>
+                    <div class="bet-row"><span>Round #0 - Inter vs AC Milan (Over 2.5)</span><span style="color:#00ff66;">+180 KSH</span></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card">
+                    <h2>Your Wallet</h2>
+                    <p>Available Balance: <strong style="font-size: 22px; color: #00ff66;">{{ user.balance if user else 0 }} KSH</strong></p>
+                    
+                    {% if user and not user.bonus_unlocked %}
+                        <p style="font-size: 13px; color: #ffcc00;">⚠️ Your 100 KSH bonus is locked! Deposit at least 50 KSH to unlock it.</p>
+                    {% else %}
+                        <p style="font-size: 13px; color: #00ff66;">🎉 Registration bonus fully unlocked!</p>
+                    {% endif %}
+                </div>
+
+                <div class="card">
+                    <h2>M-Pesa Deposit</h2>
+                    <form action="/deposit" method="POST">
+                        <input type="number" name="amount" placeholder="Minimum 10 Bob" min="10" required style="width: 100%; padding: 10px; border-radius: 5px; background: #0c131c; color: white; border: 1px solid #223245; margin-bottom: 10px; box-sizing: border-box;">
+                        <button type="submit" class="btn">Process Deposit</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        setInterval(function() {
+            fetch('/api/state')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network error');
+                    return response.json();
+                })
+                .then(data => {
+                    // Update text values targets by exact ID attributes safely
+                    document.getElementById('live-phase').innerText = data.phase + ' PHASE';
+                    document.getElementById('live-time').innerText = data.time + 's';
+                    document.getElementById('live-round').innerText = 'Round #' + data.round;
+
+                    // Dynamically swap the matches look depending on game phases
+                    const matchHeader = document.getElementById('match-header');
+                    const matchList = document.getElementById('match-list');
+                    
+                    if (data.phase === 'PLAYING') {
+                        matchHeader.innerText = '⚽ LIVE MATCHES IN PROGRESS';
+                        matchHeader.style.color = '#00ff66';
+                        matchList.innerHTML = `
+                            <div class="bet-row"><span>Juventus vs AC Milan</span><strong style="color: #00ff66;">1 - 0</strong></div>
+                            <div class="bet-row"><span>Inter vs AS Roma</span><strong style="color: #00ff66;">2 - 2</strong></div>
+                        `;
+                    } else {
+                        matchHeader.innerText = '⏳ PENDING MATCHES (NEXT ROUND)';
+                        matchHeader.style.color = '#ffcc00';
+                        matchList.innerHTML = `
+                            <div class="bet-row"><span>AC Milan vs Inter</span><span>Kickoff in ${data.time}s</span></div>
+                            <div class="bet-row"><span>AS Roma vs Juventus</span><span>Kickoff in ${data.time}s</span></div>
+                        `;
+                    }
+                })
+                .catch(err => console.log("Waiting for engine sync data..."));
+        }, 1000);
+    </script>
+</body>
+</html>
