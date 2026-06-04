@@ -65,7 +65,6 @@ def get_mpesa_access_token():
 # --- CORE SIMULATION ENGINE LOGIC ---
 
 def generate_fixtures_for_round(round_num):
-    """Generates consistent pairs, virtual odds, and scores for any given round."""
     random.seed(round_num + 999) 
     shuffled_teams = list(LEAGUE_TEAMS)
     random.shuffle(shuffled_teams)
@@ -75,7 +74,6 @@ def generate_fixtures_for_round(round_num):
         home = shuffled_teams[i]
         away = shuffled_teams[i+1]
         
-        # Deterministic generation of realistic decimal odds
         home_odds = round(random.uniform(1.30, 4.50), 2)
         draw_odds = round(random.uniform(2.60, 3.80), 2)
         away_odds = round(random.uniform(1.40, 5.00), 2)
@@ -123,10 +121,55 @@ def get_current_match_state():
     return {
         'phase': phase,
         'time': time_left,
+        'time_into_loop': time_into_current_loop,
         'round': current_round,
         'season': season_number,
         'fixtures': fixtures
     }
+
+def generate_live_commentary(fixtures, time_into_loop, round_num):
+    """Generates procedural AI sports commentary events based on the live simulation matrix."""
+    # Use the current countdown second to seed the randomized commentary picks
+    random.seed(time_into_loop + round_num)
+    
+    # Pick one match from the round to highlight for this live update cycle
+    focus_match = random.choice(fixtures)
+    home = focus_match['home']
+    away = focus_match['away']
+    h_score = focus_match['home_score']
+    a_score = focus_match['away_score']
+    
+    # Game minute mapper (converts the 55-second simulation phase into a 90-minute timeline)
+    playing_second = time_into_loop - 60
+    match_minute = int((playing_second / 55.0) * 90)
+    if match_minute < 1: match_minute = 1
+    if match_minute > 90: match_minute = 90
+
+    # Commentary scripts categories
+    goal_commentary = [
+        f"🎙️ GOOOAAAL! Incredible scenes here! {home} breaks through the defensive wall!",
+        f"🎙️ BALL IN THE NET! A masterclass finish from the {away} forward line!",
+        f"🎙️ GOAL! The keeper had absolutely no chance with that powerful strike!",
+        f"🎙️ UNBELIEVABLE GOAL! The stadium erupts as {home} clinical volley finds the top corner!"
+    ]
+    
+    midfield_commentary = [
+        f"🎙️ [{match_minute}'] Tactical battle ongoing in midfield between {home} and {away}.",
+        f"🎙️ [{match_minute}'] {home} is maintaining possession nicely, looking for a crossing opportunity.",
+        f"🎙️ [{match_minute}'] Crucial sliding tackle intercept from the {away} central defensive midfielder!",
+        f"🎙️ [{match_minute}'] High intensity pressure here as {away} presses deep up the wings.",
+        f"🎙️ [{match_minute}'] {home} earns a corner kick after a deflected cross over the back line.",
+        f"🎙️ [{match_minute}'] Yellow card! Defending player penalized for an aggressive tackle.",
+        f"🎙️ [{match_minute}'] SPECTACULAR SAVE! The goalkeeper dives wide to deny {away} a clean opener!"
+    ]
+    
+    # If it is a high-scoring game state or a lucky random draw, narrate a goal event
+    if (h_score > 0 or a_score > 0) and random.random() > 0.65:
+        scoring_team = home if h_score >= a_score else away
+        return f"[{match_minute}'] " + random.choice(goal_commentary) + f" ({home} {h_score} - {a_score} {away})"
+    
+    # Otherwise, return regular dynamic match telemetries
+    return random.choice(midfield_commentary)
 
 def get_league_standings(current_round):
     table = {team: {'name': team, 'mp': 0, 'w': 0, 'd': 0, 'l': 0, 'pts': 0} for team in LEAGUE_TEAMS}
@@ -175,7 +218,6 @@ def register():
         flash("Email already registered.")
         return redirect(url_for('login'))
     
-    # Creates user with 250 Bob testing balance
     users[email] = {'password': password, 'balance': 250, 'bonus_unlocked': False, 'is_admin': False}
     session['user'] = email
     return redirect(url_for('index'))
@@ -347,10 +389,19 @@ def get_state():
                 users[b['email']]['balance'] += payout
                 state['company_balance'] -= (payout - b['stake']) 
 
+    # --- LIVE AI COMMENTARY FEED ENGINE INTEGRATION ---
     if current_state['phase'] == 'PLAYING':
-        logs_feed = [f"[System] Season {current_state['season']} | Round #{current_state['round']} active.", "[System] Placed bet pools locked during simulation."]
+        # Generate match feed commentary phrases during simulation runtime
+        commentary_line = generate_live_commentary(current_state['fixtures'], current_state['time_into_loop'], current_state['round'])
+        logs_feed = [
+            f"[System] Season {current_state['season']} | Round #{current_state['round']} active.",
+            commentary_line
+        ]
     else:
-        logs_feed = [f"[System] Season {current_state['season']} | Round #{current_state['round']} complete.", "[System] Market Open. Accepting placements."]
+        logs_feed = [
+            f"[System] Season {current_state['season']} | Round #{current_state['round']} complete.",
+            "🎙️ [Pre-Match] The market coupon is open! Players are arranging their multibet selections."
+        ]
 
     return {
         'phase': current_state['phase'],
@@ -366,7 +417,7 @@ def get_state():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login')) # FIXED: Changes recursive 'logout' redirect loop back to clean login redirect
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     app.run(debug=True)
