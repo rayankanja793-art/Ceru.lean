@@ -4,6 +4,7 @@ import random
 
 app = Flask(__name__)
 
+# Secure cookie configuration for handling sessions on cloud deployment platforms
 app.config.update(
     SECRET_KEY='swiftpitch_super_secret_key_2026',
     SESSION_COOKIE_SECURE=False,  
@@ -21,7 +22,7 @@ users = {
     }
 }
 
-# --- YOUR 20 CUSTOM TEAMS ---
+# --- YOUR 20 CUSTOM LEAGUE TEAMS ---
 LEAGUE_TEAMS = [
     "Roma", "Juventus", "Milaan Reds", "Torino", "Fiorentina",
     "Bologna", "Sassuolo", "Lazio", "Verona", "Atlanta",
@@ -29,14 +30,15 @@ LEAGUE_TEAMS = [
     "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"
 ]
 
+# --- LIVE ENGINE STATE (TIMESTAMP DRIVEN) ---
 state = {
-    'is_running': True,
+    'is_running': True,      # Engine runs by default on deployment startup
     'start_time': time.time()
 }
 
 def generate_fixtures_for_round(round_num):
-    """Generates a fixed but clean set of pairs from your 20 teams based on the round number."""
-    random.seed(round_num + 999) # Keep results consistent throughout the same round sequence
+    """Generates a consistent set of matching pairs and scores based on the active round sequence."""
+    random.seed(round_num + 999) # Ensures the scores match for all users on the same round
     shuffled_teams = list(LEAGUE_TEAMS)
     random.shuffle(shuffled_teams)
     
@@ -44,23 +46,21 @@ def generate_fixtures_for_round(round_num):
     for i in range(0, len(shuffled_teams), 2):
         home = shuffled_teams[i]
         away = shuffled_teams[i+1]
-        # Simulate realistic goals
-        home_score = random.randint(0, 4)
-        away_score = random.randint(0, 4)
         fixtures.append({
             'home': home,
             'away': away,
-            'home_score': home_score,
-            'away_score': away_score
+            'home_score': random.randint(0, 4),
+            'away_score': random.randint(0, 4)
         })
     return fixtures
 
 def get_current_match_state():
+    """Calculates phase, remaining time, and fixture matchups mathematically using system time."""
     if not state['is_running']:
-        return {'phase': 'BETTING', 'time': 60, 'round': 1, 'fixtures': []}
+        return {'phase': 'BETTING', 'time': 60, 'round': 1, 'fixtures': generate_fixtures_for_round(1)}
         
     elapsed = int(time.time() - state['start_time'])
-    total_loop_time = 115 
+    total_loop_time = 115 # 60 seconds betting window + 55 seconds live play duration
     
     current_round = (elapsed // total_loop_time) + 1
     time_into_current_loop = elapsed % total_loop_time
@@ -81,12 +81,13 @@ def get_current_match_state():
         'fixtures': fixtures
     }
 
-# --- ROUTES ---
+# --- APPLICATION ROUTING SYSTEM ---
 
 @app.route('/')
 def index():
     if 'user' not in session or session['user'] not in users:
         return redirect(url_for('login'))
+        
     current_user_data = users[session['user']]
     current_state = get_current_match_state()
     return render_template('index.html', state=current_state, user=current_user_data)
@@ -96,49 +97,93 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
+        
         if email in users and users[email]['password'] == password:
             session['user'] = email
             return redirect(url_for('index'))
         else:
             flash("Invalid email or password.")
             return redirect(url_for('login'))
+            
     return render_template('login.html')
 
 @app.route('/register', methods=['POST'])
 def register():
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '').strip()
+    
     if not email or not password:
-        flash("Email and password are required.")
+        flash("Email and password fields are required.")
         return redirect(url_for('login'))
+        
     if email in users:
-        flash("Email already registered. Please login.")
+        flash("Email address already registered. Please login instead.")
         return redirect(url_for('login'))
-    users[email] = {'password': password, 'balance': 100, 'bonus_unlocked': False, 'is_admin': False}
+        
+    # Standard profile generation with your 100 KSH welcome bonus parameters
+    users[email] = {
+        'password': password, 
+        'balance': 100, 
+        'bonus_unlocked': False, 
+        'is_admin': False
+    }
+    
     session['user'] = email
-    flash("Welcome! You received 100 KSH bonus. Deposit 50 KSH to unlock it.")
+    flash("Welcome! You received a 100 KSH bonus. Deposit 50 KSH or more to unlock it.")
     return redirect(url_for('index'))
 
 @app.route('/deposit', methods=['POST'])
 def deposit():
-    if 'user' not in session: return redirect(url_for('login'))
-    try: amount = float(request.form.get('amount', 0))
-    except ValueError: amount = 0
+    if 'user' not in session:
+        return redirect(url_for('login'))
+        
+    try:
+        amount = float(request.form.get('amount', 0))
+    except ValueError:
+        amount = 0
+        
     if amount < 10:
         flash("Minimum deposit is 10 Bob.")
         return redirect(url_for('index'))
+        
     user = users[session['user']]
     user['balance'] += amount
+    
+    # Check if this deposit satisfies the welcome bonus unlocking terms
     if amount >= 50 and not user['bonus_unlocked']:
         user['bonus_unlocked'] = True
-        flash("Deposit successful! Your 100 KSH bonus has been unlocked.")
+        flash("Deposit successful! Your 100 KSH sign-up bonus has been unlocked.")
     else:
-        flash(f"Successfully deposited {amount} KSH.")
+        flash(f"Successfully deposited {amount} KSH to account balance.")
+        
     return redirect(url_for('index'))
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+        
+    user_profile = users.get(session['user'], {})
+    if not user_profile.get('is_admin', False):
+        return "Access Denied: Admins Only.", 403
+        
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'start':
+            state['is_running'] = True
+            state['start_time'] = time.time()
+        elif action == 'stop':
+            state['is_running'] = False
+            
+    current_state = get_current_match_state()
+    current_state['is_running'] = state['is_running']
+    return render_template('admin.html', state=current_state)
 
 @app.route('/api/state')
 def get_state():
+    """Quietly updates real-time screen parameters and active tickers every second via AJAX fetch."""
     current_state = get_current_match_state()
+    
     if current_state['phase'] == 'PLAYING':
         if current_state['time'] > 45:
             commentary = ["[05'] Matches kicked off! Pitch conditions look pristine across all venues.", "[14'] Milan Blues pressing deep in enemy territory."]
