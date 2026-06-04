@@ -17,16 +17,18 @@
         .timer { font-size: 24px; color: #00ff66; font-weight: bold; }
         .bet-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #223245; font-size: 13px; }
         .ticker-box { background-color: #0c131c; padding: 10px; border-radius: 5px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #a0aec0; border: 1px solid #223245; }
-        .scroll-box { max-height: 280px; overflow-y: auto; }
+        .scroll-box { max-height: 320px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th, td { padding: 6px 4px; border-bottom: 1px solid #223245; text-align: left; }
         th { color: #a0aec0; }
         .alert { background: rgba(255,204,0,0.15); border: 1px solid #ffcc00; padding: 10px; color:#ffcc00; border-radius: 5px; margin-bottom: 15px; font-size:13px; }
+        .input-field { width: 100%; padding: 8px; background: #0c131c; color: white; border: 1px solid #223245; margin-bottom: 10px; box-sizing: border-box; border-radius: 4px; }
     </style>
 </head>
 <body>
 
     <div class="container">
+        <!-- APP TOP BAR MENU -->
         <div class="header">
             <h1>SWIFTPITCH</h1>
             <div>
@@ -37,11 +39,14 @@
             </div>
         </div>
 
+        <!-- NOTIFICATION BANNER LINK -->
         {% with messages = get_flashed_messages() %}
             {% if messages %}{% for m in messages %}<div class="alert">{{ m }}</div>{% endfor %}{% endif %}
         {% endwith %}
 
         <div class="grid">
+            
+            <!-- COLUMN 1: VIRTUAL LIVE MATCH CENTER -->
             <div class="card">
                 <h2>Match Center</h2>
                 <p style="font-size:13px;">State: <strong id="live-phase" style="color: #ffcc00;">{{ state.phase }} PHASE</strong> | Time: <span class="timer" id="live-time">{{ state.time }}s</span></p>
@@ -54,10 +59,11 @@
                     {% endfor %}
                 </div>
 
-                <h4 style="color: #00ff66; margin: 15px 0 5px 0; font-size: 13px;">📡 LIVE FEED</h4>
-                <div class="ticker-box" id="live-logs"><div>[System] Ready...</div></div>
+                <h4 style="color: #00ff66; margin: 15px 0 5px 0; font-size: 13px;">📡 LIVE FEEDS & TELEMETRY</h4>
+                <div class="ticker-box" id="live-logs"><div>[System] Establishing link...</div></div>
             </div>
 
+            <!-- COLUMN 2: SEASON RUNNING STANDINGS BOARD -->
             <div class="card">
                 <h2>League Table Standings</h2>
                 <div class="scroll-box">
@@ -79,49 +85,83 @@
                 </div>
             </div>
 
+            <!-- COLUMN 3: FINANCES, REAL PAYMENT SLOTS, AND SLIPS -->
             <div>
+                <!-- ACTIVE ACCOUNT CREDITS -->
                 <div class="card">
-                    <h2>Wallet & Bet Slip</h2>
-                    <p>Balance: <strong style="font-size: 20px; color: #00ff66;">{{ user.balance }} KSH</strong></p>
+                    <h2>Your Wallet</h2>
+                    <p>Available Balance: <strong style="font-size: 20px; color: #00ff66;">{{ user.balance }} KSH</strong></p>
                     
                     <hr style="border:0; border-top:1px solid #223245; margin:15px 0;">
                     
+                    <!-- BET SLIP WIDGET FOR PLACEMENTS -->
                     <form action="/place-bet" method="POST">
                         <h4 style="color:#ffcc00; margin: 0 0 10px 0; font-size:13px;">Place Direct Win Bet</h4>
-                        <select name="selection" required style="width:100%; padding:8px; background:#0c131c; color:white; border:1px solid #223245; margin-bottom:10px; border-radius:4px;">
+                        <select name="selection" required class="input-field">
                             {% for team in standings %}
                                 <option value="{{ team.name }}">{{ team.name }}</option>
                             {% endfor %}
                         </select>
-                        <input type="number" name="stake" placeholder="Stake Amount (Bob)" min="1" required style="width:100%; padding:8px; background:#0c131c; color:white; border:1px solid #223245; margin-bottom:10px; box-sizing:border-box; border-radius:4px;">
+                        <input type="number" name="stake" placeholder="Stake Amount (Bob)" min="1" required class="input-field">
                         <button type="submit" class="btn">Submit Ticket</button>
                     </form>
                 </div>
 
+                <!-- NEW: M-PESA GATEWAY STK REAL INTEGRATION COMPONENT -->
+                <div class="card" style="border-color: #00ff66;">
+                    <h2>M-Pesa Real Deposit</h2>
+                    <p style="font-size: 11px; color: #a0aec0; margin-top: 0; margin-bottom: 12px;">
+                        Enter your credentials to receive an instant Lipa Na M-Pesa secure checkout pin request on your handset.
+                    </p>
+                    <form action="/deposit" method="POST">
+                        <label style="font-size: 11px; color: #a0aec0; display: block; margin-bottom: 3px;">Safaricom Phone Number</label>
+                        <input type="tel" name="phone_number" placeholder="e.g., 254712345678" required class="input-field">
+                        
+                        <label style="font-size: 11px; color: #a0aec0; display: block; margin-bottom: 3px;">Amount (KSH)</label>
+                        <input type="number" name="amount" placeholder="Minimum 10 Bob" min="10" required class="input-field">
+                        
+                        <button type="submit" class="btn" style="background-color: #00ff66; color: black;">Request STK Push Prompt</button>
+                    </form>
+                </div>
+
+                <!-- TRANSACTIONS REGISTER RECORD -->
                 <div class="card" style="border-color:#223245;">
                     <h2>Your Tickets</h2>
-                    <div class="scroll-box" style="max-height:150px;">
+                    <div class="scroll-box" style="max-height:140px;">
                         {% for bet in bets %}
                             <div class="bet-row">
-                                <span>R#{{ bet.round }} - {{ bet.selection }}</span>
+                                <span>R#{{ bet.round }} - {{ bet.selection }} ({{ bet.stake }} Bob)</span>
                                 <strong style="color:{% if bet.status=='WON' %}#00ff66{% elif bet.status=='LOST' %}#ff3333{% else %}#ffcc00{% endif %};">{{ bet.status }}</strong>
                             </div>
+                        {% else %}
+                            <p style="font-size:12px; color:#a0aec0; text-align:center; margin:10px 0;">No tickets logged yet.</p>
                         {% endfor %}
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
+    <!-- MAIN TICKER EVENT LOOP AND LIVE STANDINGS SYNCHRONIZATION MATRIX -->
     <script>
         setInterval(function() {
             fetch('/api/state')
                 .then(response => response.json())
                 .then(data => {
+                    // Update Text labels
                     document.getElementById('live-phase').innerText = data.phase + ' PHASE';
                     document.getElementById('live-time').innerText = data.time + 's';
                     document.getElementById('live-round').innerText = 'Season ' + data.season + ' | Round #' + data.round;
 
+                    // Update live server telemetry logs
+                    const logContainer = document.getElementById('live-logs');
+                    logContainer.innerHTML = ''; 
+                    data.logs.forEach(line => {
+                        const d = document.createElement('div'); d.innerText = line; logContainer.appendChild(d);
+                    });
+
+                    // Match state visualization rendering
                     const matchHeader = document.getElementById('match-header');
                     const matchList = document.getElementById('match-list');
                     matchList.innerHTML = '';
@@ -138,6 +178,7 @@
                         });
                     }
 
+                    // Dynamically map table parameters from JSON responses without manual window refreshes
                     const standingsBody = document.getElementById('standings-body');
                     standingsBody.innerHTML = '';
                     data.standings.forEach((team, idx) => {
@@ -150,7 +191,7 @@
                             </tr>
                         `;
                     });
-                }).catch(err => console.log("Syncing..."));
+                }).catch(err => console.log("Synchronizing data stream..."));
         }, 1000);
     </script>
 </body>
