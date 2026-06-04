@@ -6,20 +6,24 @@
     <title>SwiftPitch - Dashboard</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
-        .container { max-width: 1100px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #223245; padding-bottom: 15px; margin-bottom: 20px; }
         h1 { color: #ffcc00; margin: 0; font-size: 28px; }
-        h2 { color: #ffcc00; font-size: 20px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #223245; padding-bottom: 5px; }
-        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
-        .card { background-color: #16222f; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #223245; }
-        .btn { background-color: #ffcc00; color: black; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
+        h2 { color: #ffcc00; font-size: 18px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #223245; padding-bottom: 5px; }
+        .grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr; gap: 15px; }
+        @media (max-width: 992px) { .grid { grid-template-columns: 1fr; } }
+        .card { background-color: #16222f; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #223245; }
+        .btn { background-color: #ffcc00; color: black; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
         .timer { font-size: 24px; color: #00ff66; font-weight: bold; }
-        .alert { background-color: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; color: #ffcc00; padding: 12px; border-radius: 5px; margin-bottom: 15px; }
-        .logout-btn { color: #ff3333; text-decoration: none; font-weight: bold; font-size: 14px; }
-        .bet-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #223245; font-size: 14px; }
-        .ticker-box { background-color: #0c131c; padding: 12px; border-radius: 5px; height: 100px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; color: #a0aec0; border: 1px solid #223245; line-height: 1.6; }
-        .match-scroll-box { max-height: 320px; overflow-y: auto; padding-right: 5px; }
+        .bet-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #223245; font-size: 13px; }
+        .ticker-box { background-color: #0c131c; padding: 10px; border-radius: 5px; height: 80px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #a0aec0; border: 1px solid #223245; }
+        .scroll-box { max-height: 280px; overflow-y: auto; }
+        
+        /* Table Layout Styling */
+        table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+        th { color: #a0aec0; padding: 6px 4px; border-bottom: 2px solid #223245; }
+        td { padding: 6px 4px; border-bottom: 1px solid #223245; }
+        tr:nth-child(-n+4) td:first-child { color: #00ff66; font-weight: bold; } /* Top 4 Highlight */
     </style>
 </head>
 <body>
@@ -28,62 +32,71 @@
         <div class="header">
             <h1>SWIFTPITCH</h1>
             <div>
-                <span style="margin-right: 15px; color: #a0aec0;">Live Platform</span>
-                <a href="/logout" class="logout-btn">Log Out →</a>
+                {% if user and user.is_admin %}
+                    <a href="/admin" style="background-color: #ff3333; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 12px; margin-right: 10px;">🛠️ ADMIN</a>
+                {% endif %}
+                <a href="/logout" style="color: #ff3333; text-decoration: none; font-weight: bold; font-size: 13px;">Log Out →</a>
             </div>
         </div>
 
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
         <div class="grid">
-            <div>
-                <div class="card">
-                    <h2>Live Match Center (League Simulation)</h2>
-                    <p>Current Engine State: <strong id="live-phase" style="color: #ffcc00;">{{ state.phase }} PHASE</strong></p>
-                    <p>Time Remaining: <span class="timer" id="live-time">{{ state.time }}s</span></p>
-                    <p>League Round Sequence: <strong id="live-round">Round #{{ state.round }}</strong></p>
-                    
-                    <div style="background-color: #16222f; margin-top: 15px;">
-                        <h4 id="match-header" style="color: #ffcc00; margin: 0 0 10px 0;">⏳ FIXTURES SCHEDULE</h4>
-                        
-                        <div class="match-scroll-box" id="match-list">
-                            {% for match in state.fixtures %}
-                                <div class="bet-row">
-                                    <span>{{ match.home }} vs {{ match.away }}</span>
-                                    <span>Awaiting Kickoff</span>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
+            <div class="card">
+                <h2>Match Center</h2>
+                <p style="font-size:13px; margin: 5px 0;">State: <strong id="live-phase" style="color: #ffcc00;">{{ state.phase }} PHASE</strong> | Time: <span class="timer" id="live-time">{{ state.time }}s</span></p>
+                <p style="font-size:13px; margin: 5px 0;" id="live-round">League Sequence: Round #{{ state.round }}</p>
+                
+                <h4 id="match-header" style="color: #ffcc00; margin: 15px 0 5px 0; font-size: 13px;">⏳ FIXTURES SCHEDULE</h4>
+                <div class="scroll-box" id="match-list">
+                    {% for match in state.fixtures %}
+                        <div class="bet-row"><span>{{ match.home }} vs {{ match.away }}</span><span>Awaiting...</span></div>
+                    {% endfor %}
+                </div>
 
-                    <h4 style="color: #00ff66; margin: 15px 0 8px 0; font-size: 14px;">📡 LIVE LEAGUE FEED</h4>
-                    <div class="ticker-box" id="live-logs">
-                        <div>[System] Connective synchronization ready...</div>
-                    </div>
+                <h4 style="color: #00ff66; margin: 15px 0 5px 0; font-size: 13px;">📡 LIVE LEAGUE TICKER FEED</h4>
+                <div class="ticker-box" id="live-logs"><div>[System] Ready...</div></div>
+            </div>
+
+            <div class="card">
+                <h2>League Table Standings</h2>
+                <div class="scroll-box">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pos</th>
+                                <th>Team</th>
+                                <th>MP</th>
+                                <th>W</th>
+                                <th>D</th>
+                                <th>L</th>
+                                <th>PTS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="standings-body">
+                            {% for team in standings %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td><strong>{{ team.name }}</strong></td>
+                                    <td>{{ team.mp }}</td>
+                                    <td>{{ team.w }}</td>
+                                    <td>{{ team.d }}</td>
+                                    <td>{{ team.l }}</td>
+                                    <td style="color: #ffcc00; font-weight: bold;">{{ team.pts }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             <div>
                 <div class="card">
                     <h2>Your Wallet</h2>
-                    <p>Available Balance: <strong style="font-size: 22px; color: #00ff66;">{{ user.balance if user else 0 }} KSH</strong></p>
-                    {% if user and not user.bonus_unlocked %}
-                        <p style="font-size: 13px; color: #ffcc00;">⚠️ Deposit 50 KSH to unlock 100 KSH bonus.</p>
-                    {% else %}
-                        <p style="font-size: 13px; color: #00ff66;">🎉 Registration bonus active.</p>
-                    {% endif %}
+                    <p>Balance: <strong style="font-size: 20px; color: #00ff66;">{{ user.balance if user else 0 }} KSH</strong></p>
                 </div>
-
                 <div class="card">
                     <h2>M-Pesa Deposit</h2>
                     <form action="/deposit" method="POST">
-                        <input type="number" name="amount" placeholder="Minimum 10 Bob" min="10" required style="width: 100%; padding: 10px; border-radius: 5px; background: #0c131c; color: white; border: 1px solid #223245; margin-bottom: 10px; box-sizing: border-box;">
+                        <input type="number" name="amount" placeholder="Min 10 Bob" min="10" required style="width: 100%; padding: 8px; border-radius: 5px; background: #0c131c; color: white; border: 1px solid #223245; margin-bottom: 10px; box-sizing: border-box;">
                         <button type="submit" class="btn">Process Deposit</button>
                     </form>
                 </div>
@@ -98,49 +111,50 @@
                 .then(data => {
                     document.getElementById('live-phase').innerText = data.phase + ' PHASE';
                     document.getElementById('live-time').innerText = data.time + 's';
-                    document.getElementById('live-round').innerText = 'Round #' + data.round;
+                    document.getElementById('live-round').innerText = 'League Sequence: Round #' + data.round;
 
-                    // Update live feed text
+                    // Update logs
                     const logContainer = document.getElementById('live-logs');
                     logContainer.innerHTML = ''; 
-                    data.logs.forEach(logLine => {
-                        const row = document.createElement('div');
-                        row.innerText = logLine;
-                        logContainer.appendChild(row);
+                    data.logs.forEach(line => {
+                        const d = document.createElement('div'); d.innerText = line; logContainer.appendChild(d);
                     });
 
-                    // Update all 10 match fixtures rows cleanly
+                    // Update fixtures
                     const matchHeader = document.getElementById('match-header');
                     const matchList = document.getElementById('match-list');
-                    matchList.innerHTML = ''; 
+                    matchList.innerHTML = '';
                     
                     if (data.phase === 'PLAYING') {
-                        matchHeader.innerText = '⚽ LIVE MATCHES IN PROGRESS';
-                        matchHeader.style.color = '#00ff66';
-                        
-                        data.fixtures.forEach(match => {
-                            matchList.innerHTML += `
-                                <div class="bet-row">
-                                    <span>${match.home} vs ${match.away}</span>
-                                    <strong style="color: #00ff66;">${match.home_score} - ${match.away_score}</strong>
-                                </div>
-                            `;
+                        matchHeader.innerText = '⚽ LIVE MATCHES IN PROGRESS'; matchHeader.style.color = '#00ff66';
+                        data.fixtures.forEach(m => {
+                            matchList.innerHTML += `<div class="bet-row"><span>${m.home} vs ${m.away}</span><strong style="color:#00ff66;">${m.home_score} - ${m.away_score}</strong></div>`;
                         });
                     } else {
-                        matchHeader.innerText = '⏳ PENDING MATCHES (NEXT ROUND)';
-                        matchHeader.style.color = '#ffcc00';
-                        
-                        data.fixtures.forEach(match => {
-                            matchList.innerHTML += `
-                                <div class="bet-row">
-                                    <span>${match.home} vs ${match.away}</span>
-                                    <span style="color: #a0aec0;">Kickoff in ${data.time}s</span>
-                                </div>
-                            `;
+                        matchHeader.innerText = '⏳ PENDING MATCHES (NEXT ROUND)'; matchHeader.style.color = '#ffcc00';
+                        data.fixtures.forEach(m => {
+                            matchList.innerHTML += `<div class="bet-row"><span>${m.home} vs ${m.away}</span><span style="color:#a0aec0;">Kickoff in ${data.time}s</span></div>`;
                         });
                     }
+
+                    // Update live league table rows dynamically
+                    const standingsBody = document.getElementById('standings-body');
+                    standingsBody.innerHTML = '';
+                    data.standings.forEach((team, idx) => {
+                        standingsBody.innerHTML += `
+                            <tr>
+                                <td>${idx + 1}</td>
+                                <td><strong>${team.name}</strong></td>
+                                <td>${team.mp}</td>
+                                <td>${team.w}</td>
+                                <td>${team.d}</td>
+                                <td>${team.l}</td>
+                                <td style="color: #ffcc00; font-weight: bold;">${team.pts}</td>
+                            </tr>
+                        `;
+                    });
                 })
-                .catch(err => console.log("Re-syncing with league table engine..."));
+                .catch(err => console.log("Sync..."));
         }, 1000);
     </script>
 </body>
