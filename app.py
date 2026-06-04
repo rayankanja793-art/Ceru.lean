@@ -42,7 +42,6 @@ LEAGUE_TEAMS = [
     "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"
 ]
 
-# Added company_balance here initialized at 500,000 KSH
 state = {
     'is_running': True,
     'start_time': time.time(),
@@ -278,8 +277,6 @@ def admin():
             
     current_state = get_current_match_state()
     current_state['is_running'] = state['is_running']
-    
-    # We pass the real-time company balance value straight into the admin dashboard template
     return render_template('admin.html', state=current_state, total_bets=placed_bets, company_balance=state['company_balance'])
 
 @app.route('/api/state')
@@ -287,7 +284,6 @@ def get_state():
     current_state = get_current_match_state()
     standings = get_league_standings(current_state['round'])
     
-    # Process previous round results and adjust Company Balance
     for b in placed_bets:
         if b['status'] == 'PENDING' and b['round'] < current_state['round']:
             past_fixtures = generate_fixtures_for_round(b['round'])
@@ -300,12 +296,16 @@ def get_state():
                 b['status'] = 'WON'
                 payout = b['stake'] * 2
                 users[b['email']]['balance'] += payout
-                # DEDUCT from company vault because user won money from the house
                 state['company_balance'] -= (payout - b['stake'])
             else:
                 b['status'] = 'LOST'
-                # ADD to company vault because the user lost their stake to the house
                 state['company_balance'] += b['stake']
+
+    # HIDDEN FROM PUBLIC: The telemetry log channel no longer leaks the raw company vault variables
+    if current_state['phase'] == 'PLAYING':
+        logs_feed = [f"[System] Season {current_state['season']} | Round #{current_state['round']} active.", "[System] Placed bet pools locked during simulation."]
+    else:
+        logs_feed = [f"[System] Season {current_state['season']} | Round #{current_state['round']} complete.", "[System] Market Open. Accepting placements."]
 
     return {
         'phase': current_state['phase'],
@@ -314,8 +314,8 @@ def get_state():
         'season': current_state['season'],
         'fixtures': current_state['fixtures'],
         'standings': standings,
-        'company_balance': state['company_balance'], # Pass to API sync loop
-        'logs': [f"[System] Season {current_state['season']} | Round #{current_state['round']} active.", f"[System] Live Vault Reserve: {state['company_balance']:,} KSH"]
+        'company_balance': state['company_balance'], 
+        'logs': logs_feed
     }
 
 @app.route('/logout')
