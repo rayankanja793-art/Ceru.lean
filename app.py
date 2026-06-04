@@ -42,10 +42,12 @@ LEAGUE_TEAMS = [
     "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"
 ]
 
+# Added company_balance here initialized at 500,000 KSH
 state = {
     'is_running': True,
     'start_time': time.time(),
-    'paused_elapsed': 0
+    'paused_elapsed': 0,
+    'company_balance': 500000.0  
 }
 
 # --- REAL-MONEY PAYMENTS GATEWAY CONFIGURATION ---
@@ -198,7 +200,6 @@ def deposit():
         flash(f"[Simulation] STK push prompt of {amount} KSH sent to {phone}. Wallet updated!")
         return redirect(url_for('index'))
 
-    # FIXED LINE HERE: Changed variables to match defined uppercase configs
     timestamp = time.strftime('%Y%m%d%H%M%S')
     password_string = MPESA_SHORTCODE + MPESA_PASSKEY + timestamp
     encoded_password = base64.b64encode(password_string.encode()).decode('utf-8')
@@ -277,13 +278,16 @@ def admin():
             
     current_state = get_current_match_state()
     current_state['is_running'] = state['is_running']
-    return render_template('admin.html', state=current_state, total_bets=placed_bets)
+    
+    # We pass the real-time company balance value straight into the admin dashboard template
+    return render_template('admin.html', state=current_state, total_bets=placed_bets, company_balance=state['company_balance'])
 
 @app.route('/api/state')
 def get_state():
     current_state = get_current_match_state()
     standings = get_league_standings(current_state['round'])
     
+    # Process previous round results and adjust Company Balance
     for b in placed_bets:
         if b['status'] == 'PENDING' and b['round'] < current_state['round']:
             past_fixtures = generate_fixtures_for_round(b['round'])
@@ -294,9 +298,14 @@ def get_state():
             
             if won:
                 b['status'] = 'WON'
-                users[b['email']]['balance'] += (b['stake'] * 2)  
+                payout = b['stake'] * 2
+                users[b['email']]['balance'] += payout
+                # DEDUCT from company vault because user won money from the house
+                state['company_balance'] -= (payout - b['stake'])
             else:
                 b['status'] = 'LOST'
+                # ADD to company vault because the user lost their stake to the house
+                state['company_balance'] += b['stake']
 
     return {
         'phase': current_state['phase'],
@@ -305,7 +314,8 @@ def get_state():
         'season': current_state['season'],
         'fixtures': current_state['fixtures'],
         'standings': standings,
-        'logs': [f"[System] Season {current_state['season']} | Round #{current_state['round']} in play.", "[System] Market locked during match simulation."] if current_state['phase'] == 'PLAYING' else ["[System] Market Open. Accepting placements."]
+        'company_balance': state['company_balance'], # Pass to API sync loop
+        'logs': [f"[System] Season {current_state['season']} | Round #{current_state['round']} active.", f"[System] Live Vault Reserve: {state['company_balance']:,} KSH"]
     }
 
 @app.route('/logout')
