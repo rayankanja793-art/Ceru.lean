@@ -9,7 +9,9 @@
         .container { max-width: 1000px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff3333; padding-bottom: 15px; margin-bottom: 20px; }
         h1 { color: #ff3333; margin: 0; font-size: 24px; }
-        .card { background-color: #16222f; padding: 20px; border-radius: 8px; border: 1px solid #ff3333; margin-bottom: 20px; }
+        .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        @media (max-width: 768px) { .grid-stats { grid-template-columns: 1fr; } }
+        .card { background-color: #16222f; padding: 20px; border-radius: 8px; border: 1px solid #ff3333; }
         .btn { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-start { background-color: #00ff66; color: black; }
         .btn-stop { background-color: #ff3333; color: white; }
@@ -27,24 +29,36 @@
             <a href="/" style="color:#ffcc00; text-decoration:none; font-weight:bold;">← Return To Dashboard</a>
         </div>
 
-        <div class="card">
-            <h2>Simulation Engine Master Controls</h2>
-            <p>Status: 
-                {% if state.is_running %}
-                    <strong style="color:#00ff66;">● RUNNING AUTOMATICALLY</strong>
-                {% else %}
-                    <strong style="color:#ff3333;">■ PAUSED / FROZEN</strong>
-                {% endif %}
-            </p>
-            <p>Season Iteration: <strong>Season {{ state.season }}</strong> | Active Round: <strong>Round #{{ state.round }}</strong></p>
-            
-            <form method="POST" action="/admin" style="margin-top: 15px;">
-                {% if state.is_running %}
-                    <button type="submit" name="action" value="stop" class="btn btn-stop">🛑 Force Stop & Pause Engine</button>
-                {% else %}
-                    <button type="submit" name="action" value="start" class="btn btn-start">▶ Start / Resume Engine Simulation</button>
-                {% endif %}
-            </form>
+        <div class="grid-stats">
+            <div class="card">
+                <h2>Simulation Engine Controls</h2>
+                <p>Status: 
+                    {% if state.is_running %}
+                        <strong style="color:#00ff66;">● RUNNING AUTOMATICALLY</strong>
+                    {% else %}
+                        <strong style="color:#ff3333;">■ PAUSED / FROZEN</strong>
+                    {% endif %}
+                </p>
+                <p>Season Iteration: <strong>Season {{ state.season }}</strong> | Active Round: <strong>Round #{{ state.round }}</strong></p>
+                
+                <form method="POST" action="/admin" style="margin-top: 15px;">
+                    {% if state.is_running %}
+                        <button type="submit" name="action" value="stop" class="btn btn-stop">🛑 Force Stop & Pause Engine</button>
+                    {% else %}
+                        <button type="submit" name="action" value="start" class="btn btn-start">▶ Start / Resume Engine Simulation</button>
+                    {% endif %}
+                </form>
+            </div>
+
+            <div class="card" style="border-color: #00ff66;">
+                <h2>SwiftPitch Financial Vault</h2>
+                <p style="color:#a0aec0; font-size:13px; margin-top: 0;">Monitors the absolute profit margins generated from house operations.</p>
+                <p style="font-size: 14px; margin-bottom: 5px;">House Capital Account Balance:</p>
+                <p style="font-size: 32px; font-weight: bold; color: #00ff66; margin: 0;" id="admin-vault-display">
+                    {{ "{:,.2f}".format(company_balance) }} KSH
+                </p>
+                <span style="font-size:11px; color:#a0aec0;">*Updates dynamically at the end of each round.</span>
+            </div>
         </div>
 
         <div class="card" style="border-color: #223245;">
@@ -60,7 +74,7 @@
                         <th>Ticket Outcome</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="admin-bets-body">
                     {% for bet in total_bets %}
                     <tr>
                         <td><strong>{{ bet.email }}</strong></td>
@@ -83,5 +97,15 @@
         </div>
     </div>
 
+    <script>
+        setInterval(function() {
+            fetch('/api/state')
+                .then(response => response.json())
+                .then(data => {
+                    // Pulls company_balance from API loop data and updates the green UI display text live
+                    document.getElementById('admin-vault-display').innerText = data.company_balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KSH';
+                }).catch(err => console.log("Syncing balance vault..."));
+        }, 1000);
+    </script>
 </body>
 </html>
