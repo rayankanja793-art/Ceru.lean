@@ -30,7 +30,6 @@ users = {
     }
 }
 
-# Shared list to track bets globally across the platform
 placed_bets = [
     {'email': 'player@test.com', 'round': 1, 'selection': 'Roma', 'stake': 50, 'status': 'PENDING'},
     {'email': 'player@test.com', 'round': 0, 'selection': 'Juventus', 'stake': 100, 'status': 'WON'}
@@ -50,15 +49,12 @@ state = {
 }
 
 # --- REAL-MONEY PAYMENTS GATEWAY CONFIGURATION ---
-# Note: For production security, store these credentials in Render's Env Environment Variables panel.
 MPESA_CONSUMER_KEY = 'YOUR_ACTUAL_DARAJA_CONSUMER_KEY'
 MPESA_CONSUMER_SECRET = 'YOUR_ACTUAL_DARAJA_CONSUMER_SECRET'
-MPESA_SHORTCODE = '174379'  # Standard Sandbox Till/Paybill number
+MPESA_SHORTCODE = '174379'  
 MPESA_PASSKEY = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'
 
 def get_mpesa_access_token():
-    """Authenticates securely with Safaricom servers to obtain a bearer token."""
-    # Use 'https://api.safaricom.co.ke/oauth/v1/generate...' for live production
     api_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
     try:
         response = requests.get(api_url, auth=HTTPBasicAuth(MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET), timeout=10)
@@ -71,7 +67,6 @@ def get_mpesa_access_token():
 # --- CORE SIMULATION ENGINE LOGIC ---
 
 def generate_fixtures_for_round(round_num):
-    """Generates consistent pairs and scores for any given round."""
     random.seed(round_num + 999) 
     shuffled_teams = list(LEAGUE_TEAMS)
     random.shuffle(shuffled_teams)
@@ -89,8 +84,8 @@ def generate_fixtures_for_round(round_num):
     return fixtures
 
 def get_current_match_state():
-    total_loop_time = 115  # 60s Betting + 55s Playing
-    TOTAL_ROUNDS_IN_SEASON = 19  # 20 teams means 19 rounds per season
+    total_loop_time = 115  
+    TOTAL_ROUNDS_IN_SEASON = 19  
     
     if not state['is_running']:
         elapsed = int(state['paused_elapsed'])
@@ -123,7 +118,6 @@ def get_current_match_state():
     }
 
 def get_league_standings(current_round):
-    """Accumulates wins, draws, losses, and points up to the current round of the active season."""
     table = {team: {'name': team, 'mp': 0, 'w': 0, 'd': 0, 'l': 0, 'pts': 0} for team in LEAGUE_TEAMS}
     
     for r in range(1, current_round):
@@ -179,7 +173,6 @@ def register():
 
 @app.route('/deposit', methods=['POST'])
 def deposit():
-    """Handles production-level real-money deposit requests using Safaricom STK Push API integration."""
     if 'user' not in session: 
         return redirect(url_for('login'))
         
@@ -189,26 +182,23 @@ def deposit():
     except ValueError:
         amount = 0
         
-    if amount < 10:  # Minimum 10 bob validation guardrail
+    if amount < 10:  
         flash("Minimum payment threshold is 10 KSH.")
         return redirect(url_for('index'))
         
-    # Standardize Kenya phone formatting numbers automatically 
     if phone.startswith('0'):
         phone = '254' + phone[1:]
     elif phone.startswith('+'):
         phone = phone[1:]
 
-    # Fetch secure gateway connection access token
     access_token = get_mpesa_access_token()
     
     if not access_token or MPESA_CONSUMER_KEY == 'YOUR_ACTUAL_DARAJA_CONSUMER_KEY':
-        # Fallback Simulation sandbox auto-credit routine if keys remain unconfigured
         users[session['user']]['balance'] += amount
         flash(f"[Simulation] STK push prompt of {amount} KSH sent to {phone}. Wallet updated!")
         return redirect(url_for('index'))
 
-    # Generate live transaction timestamps and structural encryption formats
+    # FIXED LINE HERE: Changed variables to match defined uppercase configs
     timestamp = time.strftime('%Y%m%d%H%M%S')
     password_string = MPESA_SHORTCODE + MPESA_PASSKEY + timestamp
     encoded_password = base64.b64encode(password_string.encode()).decode('utf-8')
@@ -223,20 +213,18 @@ def deposit():
         "PartyA": phone,
         "PartyB": MPESA_SHORTCODE,
         "PhoneNumber": phone,
-        "CallBackURL": "https://your-app.onrender.com/api/mpesa-callback",  # Update to your live Render link
+        "CallBackURL": "https://your-app.onrender.com/api/mpesa-callback",  
         "AccountReference": "SwiftPitchWallet",
         "TransactionDesc": "Wallet Funding"
     }
     
     try:
-        # Use 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest' for live target transactions
         api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
         res = requests.post(api_url, json=payload, headers=headers, timeout=15)
         
         if res.status_code == 200:
             flash(f"STK Push dispatched successfully! Complete payment verification prompt on phone {phone}.")
         else:
-            # Fallback automatic allocation if the payment server triggers communication hiccups
             users[session['user']]['balance'] += amount
             flash("Safaricom Gateway busy. Transaction completed locally instead.")
     except Exception:
@@ -296,7 +284,6 @@ def get_state():
     current_state = get_current_match_state()
     standings = get_league_standings(current_state['round'])
     
-    # Process previous round results and handle winnings payout
     for b in placed_bets:
         if b['status'] == 'PENDING' and b['round'] < current_state['round']:
             past_fixtures = generate_fixtures_for_round(b['round'])
@@ -307,7 +294,7 @@ def get_state():
             
             if won:
                 b['status'] = 'WON'
-                users[b['email']]['balance'] += (b['stake'] * 2)  # 2x Payout Factor
+                users[b['email']]['balance'] += (b['stake'] * 2)  
             else:
                 b['status'] = 'LOST'
 
