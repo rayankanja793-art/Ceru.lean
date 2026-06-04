@@ -3,29 +3,305 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Player Dashboard</title>
+    <title>SwiftPitch - Virtual Soccer Platform</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0c131c; color: white; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00ff66; padding-bottom: 15px; margin-bottom: 20px; }
-        .wallet-box { background: #16222f; padding: 10px 20px; border-radius: 8px; border: 1px solid #00ff66; }
-        .wallet-amount { font-size: 24px; font-weight: bold; color: #00ff66; }
-        .grid-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-        .card { background-color: #16222f; padding: 20px; border-radius: 8px; border: 1px solid #223245; margin-bottom: 20px; }
-        .timer-box { font-size: 32px; font-weight: bold; text-align: center; color: #ffcc00; margin-bottom: 10px; }
-        .phase-indicator { text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 20px; letter-spacing: 2px; }
-        
-        /* Fixtures & Betting */
-        .fixture-row { display: flex; justify-content: space-between; align-items: center; background: #0c131c; padding: 15px; margin-bottom: 10px; border-radius: 5px; border-left: 3px solid #ffcc00; }
-        .teams { font-weight: bold; font-size: 16px; flex-grow: 1; }
-        .score { font-size: 20px; font-weight: bold; color: #00ff66; margin: 0 20px; }
-        .odds-buttons { display: flex; gap: 10px; }
-        .odd-btn { background: #223245; color: white; border: 1px solid #3b4d63; padding: 8px 15px; border-radius: 4px; cursor: pointer; transition: 0.2s; min-width: 60px; text-align: center; }
-        .odd-btn:hover { background: #3b4d63; }
-        .odd-btn.selected { background: #ffcc00; color: black; border-color: #ffcc00; font-weight: bold; }
-        .odd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b1118; color: #f5f7fa; margin: 0; padding: 15px; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #121b26; padding: 12px 20px; border-radius: 8px; border-bottom: 3px solid #ffcc00; margin-bottom: 20px; }
+        .logo { font-size: 22px; font-weight: bold; color: #ffcc00; text-transform: uppercase; letter-spacing: 1px; }
+        .main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+        @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+        .card { background-color: #121b26; border-radius: 8px; padding: 18px; border: 1px solid #1c2a39; margin-bottom: 15px; }
+        .phase-header { display: flex; justify-content: space-between; align-items: center; background-color: #ffcc00; color: #000; padding: 10px 15px; border-radius: 6px; font-weight: bold; font-size: 15px; margin-bottom: 15px; }
+        .fix-row { display: grid; grid-template-columns: 1fr 180px; align-items: center; padding: 10px; border-bottom: 1px solid #1c2a39; }
+        .odds-box { display: flex; gap: 5px; }
+        .odd-btn { background-color: #1c2a39; border: 1px solid #ffcc00; color: #ffcc00; padding: 6px; font-size: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; flex: 1; text-align: center; }
+        .odd-btn:hover { background-color: #ffcc00; color: #000; }
+        .odd-btn.active { background-color: #00ff66; color: #000; border-color: #00ff66; }
+        .slip-item { background: #1c2a39; padding: 10px; border-radius: 5px; margin-bottom: 8px; font-size: 12px; position: relative; border-left: 3px solid #00ff66; }
+        .remove-leg { position: absolute; right: 8px; top: 8px; color: #ff3333; cursor: pointer; font-weight: bold; }
+        .btn-action { width: 100%; background: #00ff66; color: #000; padding: 12px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-size: 14px; text-transform: uppercase; }
+        .btn-action:hover { background: #00cc52; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+        th, td { padding: 8px; border-bottom: 1px solid #1c2a39; }
+        th { color: #a0aec0; background-color: #0b1118; }
+        .telemetry-container { background-color: #0b1118; border: 1px solid #1c2a39; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 13px; color: #00ff66; min-height: 50px; line-height: 1.6; }
+    </style>
+</head>
+<body>
 
-        /* Betslip */
-        .betslip-card { border-color: #ffcc00; position: sticky; top: 20px; }
-        .betslip-item { background: #0c131c; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 14px; display: flex; justify-content: space-between; }
-        .remove
+    <div class="navbar">
+        <div class="logo">⚽ SWIFTPITCH</div>
+        <div style="font-weight: bold; color:#a0aec0;">
+            Wallet Balance: <span style="color: #00ff66;" id="live-wallet">
+                {% if user and 'balance' in user %}
+                    {{ "{:,.2f}".format(user.balance) }} KSH
+                {% else %}
+                    0.00 KSH
+                {% endif %}
+            </span>
+            {% if user and user.is_admin %}
+                <a href="/admin" style="margin-left:15px; color:#ff3333; text-decoration:none;">[🛠️ Admin Panel]</a>
+            {% endif %}
+            <a href="/logout" style="margin-left: 15px; color: #ffcc00; text-decoration: none;">Logout</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for msg in messages %}
+          <div style="background-color: #1c2a39; color: #ffcc00; border: 1px solid #ffcc00; padding: 12px; border-radius: 5px; margin-bottom: 15px; font-weight: bold; font-size: 14px;">⚠️ {{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="main-layout">
+        <div>
+            <div class="card" style="border-color: #00ff66;">
+                <h3 style="margin-top: 0; color: #00ff66; font-size: 16px;">📡 LIVE FEEDS & TELEMETRY</h3>
+                <div class="telemetry-container" id="live-telemetry-box">
+                    [System] Syncing with simulation engine timelines...
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="phase-header">
+                    <span id="display-phase">LOADING STATE...</span>
+                    <span id="display-timer">00s</span>
+                </div>
+                <h3 style="margin-top: 0; color:#a0aec0;">Season <span id="display-season">-</span> | Round #<span id="display-round">-</span> Match Fixtures</h3>
+                <div id="fixtures-container">
+                    </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0; color:#ffcc00;">Italian League Standings Table</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pos</th>
+                            <th>Club Name</th>
+                            <th>MP</th>
+                            <th>W</th>
+                            <th>D</th>
+                            <th>L</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standings-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div>
+            <div class="card" style="border-color: #00ff66;">
+                <h3 style="margin-top:0; color:#00ff66; display:flex; justify-content:space-between;">
+                    <span>📋 ACCUMULATOR SLIP</span>
+                    <span id="slip-count" style="font-size:12px; background:#1c2a39; padding:2px 8px; border-radius:10px; color:#fff;">0 Legs</span>
+                </h3>
+                <div id="empty-slip-msg" style="color:#a0aec0; font-size:13px; text-align:center; padding:15px 0;">
+                    Click any match odds (1, X, 2) to build a multi-leg accumulator ticket!
+                </div>
+                <div id="slip-legs-holder"></div>
+                
+                <div id="slip-calculator" style="display:none; border-top:1px solid #1c2a39; padding-top:10px; margin-top:10px;">
+                    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
+                        <span>Total Combined Odds:</span>
+                        <strong style="color:#ffcc00;" id="summary-odds">1.00</strong>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <label style="font-size:12px; color:#a0aec0; display:block; margin-bottom:3px;">Risk Capital Stake (KSH):</label>
+                        <input type="number" id="slip-stake" value="50" min="10" style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; font-weight:bold; border-radius:4px;">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:14px; background:rgba(0,255,102,0.1); padding:8px; border-radius:4px; margin-bottom:10px;">
+                        <span style="color:#00ff66;">Potential Return:</span>
+                        <strong style="color:#00ff66;" id="summary-payout">0.00 KSH</strong>
+                    </div>
+                    <button class="btn-action" onclick="submitAccumulatorTicket()">Submit Verified Multibet</button>
+                </div>
+            </div>
+
+            <div class="card" style="border-color: #ff3333;">
+                <h3 style="margin-top: 0; color:#ff3333;">💳 Secure Safaricom M-Pesa Funding</h3>
+                <form action="/deposit" method="POST">
+                    <label style="font-size:12px; color:#a0aec0; display:block; margin-bottom:3px;">M-Pesa Phone Line (07xx / 254xx):</label>
+                    <input type="text" name="phone_number" placeholder="e.g. 0712345678" required style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; border-radius:4px; margin-bottom:10px;">
+                    
+                    <label style="font-size:12px; color:#a0aec0; display:block; margin-bottom:3px;">Fund Capital (Min 10 Bob):</label>
+                    <input type="number" name="amount" min="10" placeholder="Amount in KSH" required style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; border-radius:4px; margin-bottom:10px;">
+                    
+                    <button type="submit" style="width:100%; background:#ff3333; color:white; font-weight:bold; padding:10px; border:none; border-radius:4px; cursor:pointer;">Initiate Instant Deposit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedSelections = {}; 
+
+        function updateBetslipUI() {
+            const holder = document.getElementById('slip-legs-holder');
+            const emptyMsg = document.getElementById('empty-slip-msg');
+            const calc = document.getElementById('slip-calculator');
+            
+            if (!holder) return;
+            holder.innerHTML = '';
+            let keys = Object.keys(selectedSelections);
+            if(document.getElementById('slip-count')) {
+                document.getElementById('slip-count').innerText = `${keys.length} Legs`;
+            }
+            
+            if(keys.length === 0) {
+                if(emptyMsg) emptyMsg.style.display = 'block';
+                if(calc) calc.style.display = 'none';
+                return;
+            }
+            
+            if(emptyMsg) emptyMsg.style.display = 'none';
+            if(calc) calc.style.display = 'block';
+            
+            let accumulatedOdds = 1.0;
+            
+            keys.forEach(id => {
+                let leg = selectedSelections[id];
+                accumulatedOdds *= leg.odds;
+                
+                let item = document.createElement('div');
+                item.className = 'slip-item';
+                item.innerHTML = `
+                    <span class="remove-leg" onclick="removeLeg('${id}')">×</span>
+                    <strong>${leg.home} vs ${leg.away}</strong><br/>
+                    Market Pick: <span style="color:#ffcc00; font-weight:bold;">${leg.market}</span> @ <strong>${leg.odds.toFixed(2)}</strong>
+                `;
+                holder.appendChild(item);
+            });
+            
+            let finalOdds = accumulatedOdds.toFixed(2);
+            if(document.getElementById('summary-odds')) {
+                document.getElementById('summary-odds').innerText = finalOdds;
+            }
+            
+            const stakeInput = document.getElementById('slip-stake');
+            const updatePayout = () => {
+                let stake = parseFloat(stakeInput.value) || 0;
+                if(document.getElementById('summary-payout')) {
+                    document.getElementById('summary-payout').innerText = (stake * finalOdds).toLocaleString('en-US', {minimumFractionDigits:2}) + ' KSH';
+                }
+            };
+            if(stakeInput) {
+                stakeInput.oninput = updatePayout;
+                updatePayout();
+            }
+        }
+
+        function addLeg(fixtureId, home, away, market, odds) {
+            let phaseEl = document.getElementById('display-phase');
+            if(phaseEl && phaseEl.innerText.includes("MATCHES LIVE")) return;
+            
+            selectedSelections[fixtureId] = { fixture_id: fixtureId, home: home, away: away, market: market, odds: parseFloat(odds) };
+            updateBetslipUI();
+            
+            document.querySelectorAll(`[data-fix="${fixtureId}"]`).forEach(btn => btn.classList.remove('active'));
+            let activeBtn = document.getElementById(`btn_${fixtureId}_${market}`);
+            if(activeBtn) activeBtn.classList.add('active');
+        }
+
+        function removeLeg(fixtureId) {
+            delete selectedSelections[fixtureId];
+            updateBetslipUI();
+            document.querySelectorAll(`[data-fix="${fixtureId}"]`).forEach(btn => btn.classList.remove('active'));
+        }
+
+        function submitAccumulatorTicket() {
+            let legs = Object.values(selectedSelections);
+            let stakeInput = document.getElementById('slip-stake');
+            let stakeAmt = stakeInput ? stakeInput.value : 50;
+            
+            fetch('/place-multibet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ selections: legs, stake: stakeAmt })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if(data.success) {
+                    selectedSelections = {};
+                    updateBetslipUI();
+                    document.querySelectorAll('.odd-btn').forEach(b => b.classList.remove('active'));
+                    window.location.reload();
+                }
+            });
+        }
+
+        setInterval(function() {
+            fetch('/api/state')
+                .then(res => res.json())
+                .then(data => {
+                    let phaseEl = document.getElementById('display-phase');
+                    let timerEl = document.getElementById('display-timer');
+                    let seasonEl = document.getElementById('display-season');
+                    let roundEl = document.getElementById('display-round');
+                    
+                    if(phaseEl) phaseEl.innerText = data.phase === 'BETTING' ? '⏳ MARKET OPEN - PLACE SELECTIONS' : '⚽ MATCHES LIVE IN SIMULATION';
+                    if(timerEl) timerEl.innerText = data.time + 's';
+                    if(seasonEl) seasonEl.innerText = data.season;
+                    if(roundEl) roundEl.innerText = data.round;
+
+                    if (data.logs && data.logs.length > 0) {
+                        let logHtml = '';
+                        data.logs.forEach(log => {
+                            logHtml += `<div style="margin-bottom: 4px;">${log}</div>`;
+                        });
+                        let telemetryEl = document.getElementById('live-telemetry-box');
+                        if(telemetryEl) telemetryEl.innerHTML = logHtml;
+                    }
+
+                    const fixHolder = document.getElementById('fixtures-container');
+                    if(fixHolder) {
+                        if(data.phase === 'BETTING') {
+                            let html = '';
+                            data.fixtures.forEach(f => {
+                                let activeHome = selectedSelections[f.id]?.market === 'HOME' ? 'active' : '';
+                                let activeDraw = selectedSelections[f.id]?.market === 'DRAW' ? 'active' : '';
+                                let activeAway = selectedSelections[f.id]?.market === 'AWAY' ? 'active' : '';
+                                
+                                html += `
+                                    <div class="fix-row">
+                                        <div style="font-size:14px;"><strong>${f.home}</strong> vs <strong>${f.away}</strong></div>
+                                        <div class="odds-box">
+                                            <button id="btn_${f.id}_HOME" data-fix="${f.id}" class="odd-btn ${activeHome}" onclick="addLeg('${f.id}','${f.home}','${f.away}','HOME','${f.odds.HOME}')">1 (${f.odds.HOME})</button>
+                                            <button id="btn_${f.id}_DRAW" data-fix="${f.id}" class="odd-btn ${activeDraw}" onclick="addLeg('${f.id}','${f.home}','${f.away}','DRAW','${f.odds.DRAW}')">X (${f.odds.DRAW})</button>
+                                            <button id="btn_${f.id}_AWAY" data-fix="${f.id}" class="odd-btn ${activeAway}" onclick="addLeg('${f.id}','${f.home}','${f.away}','AWAY','${f.odds.AWAY}')">2 (${f.odds.AWAY})</button>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            fixHolder.innerHTML = html;
+                        } else {
+                            let html = '';
+                            data.fixtures.forEach(f => {
+                                html += `
+                                    <div class="fix-row" style="grid-template-columns: 1fr 60px;">
+                                        <div style="font-size:14px;"><strong>${f.home}</strong> vs <strong>${f.away}</strong></div>
+                                        <div style="background:#ffcc00; color:black; font-weight:bold; text-align:center; padding:4px; border-radius:4px; font-size:14px;">
+                                            ${f.home_score} - ${f.away_score}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            fixHolder.innerHTML = html;
+                        }
+                    }
+
+                    let tableHtml = '';
+                    data.standings.forEach((t, i) => {
+                        tableHtml += `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.mp}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td style="color:#ffcc00; font-weight:bold;">${t.pts}</td></tr>`;
+                    });
+                    let standingsEl = document.getElementById('standings-body');
+                    if(standingsEl) standingsEl.innerHTML = tableHtml;
+                });
+        }, 1500);
+    </script>
+</body>
+</html>
