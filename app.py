@@ -30,7 +30,6 @@ users = {
     }
 }
 
-# Placed bets now look like: {'email':..., 'round':..., 'selections': [{'home': 'Roma', 'away': 'Juventus', 'market': 'HOME', 'odds': 1.85}], 'stake': 100, 'total_odds': 1.85, 'status': 'PENDING'}
 placed_bets = []
 
 LEAGUE_TEAMS = [
@@ -67,7 +66,6 @@ def get_mpesa_access_token():
 
 def generate_fixtures_for_round(round_num):
     """Generates consistent pairs, virtual odds, and scores for any given round."""
-    # Build unique seed specifically for odds generation
     random.seed(round_num + 999) 
     shuffled_teams = list(LEAGUE_TEAMS)
     random.shuffle(shuffled_teams)
@@ -174,8 +172,10 @@ def register():
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '').strip()
     if email in users:
-        flash("Email registered.")
+        flash("Email already registered.")
         return redirect(url_for('login'))
+    
+    # Creates user with 250 Bob testing balance
     users[email] = {'password': password, 'balance': 250, 'bonus_unlocked': False, 'is_admin': False}
     session['user'] = email
     return redirect(url_for('index'))
@@ -234,7 +234,6 @@ def deposit():
 
 @app.route('/place-multibet', methods=['POST'])
 def place_multibet():
-    """Processes a single or multi-leg structural bet ticket from the coupon frontend slip."""
     if 'user' not in session: return jsonify({'success': False, 'message': 'Session expired.'}), 401
     
     current_state = get_current_match_state()
@@ -242,7 +241,7 @@ def place_multibet():
         return jsonify({'success': False, 'message': 'Market closed! Matches are already in play.'}), 400
         
     data = request.get_json() or {}
-    selections = data.get('selections', []) # List of maps containing match details
+    selections = data.get('selections', []) 
     try: stake = float(data.get('stake', 0))
     except ValueError: stake = 0
     
@@ -256,14 +255,13 @@ def place_multibet():
     if not selections:
         return jsonify({'success': False, 'message': 'Your betslip coupon is completely empty.'}), 400
 
-    # Cross-reference odds against server-side fixtures to completely stop client-side hacking
     current_fixtures = {f['id']: f for f in current_state['fixtures']}
     validated_selections = []
     accumulated_odds = 1.0
     
     for sel in selections:
         fix_id = sel.get('fixture_id')
-        market = sel.get('market') # 'HOME', 'DRAW', 'AWAY'
+        market = sel.get('market') 
         
         if fix_id not in current_fixtures:
             return jsonify({'success': False, 'message': 'Invalid match selection found.'}), 400
@@ -273,4 +271,102 @@ def place_multibet():
             return jsonify({'success': False, 'message': 'Invalid market option choice.'}), 400
             
         market_odds = fixture['odds'][market]
-        accum
+        accumulated_odds *= market_odds
+        
+        validated_selections.append({
+            'fixture_id': fix_id,
+            'home': fixture['home'],
+            'away': fixture['away'],
+            'market': market,
+            'odds': market_odds
+        })
+        
+    accumulated_odds = round(accumulated_odds, 2)
+    user['balance'] -= stake
+    
+    placed_bets.append({
+        'id': f"ticket_{int(time.time())}_{random.randint(1000,9999)}",
+        'email': session['user'],
+        'round': current_state['round'],
+        'season': current_state['season'],
+        'selections': validated_selections,
+        'stake': stake,
+        'total_odds': accumulated_odds,
+        'status': 'PENDING'
+    })
+    
+    return jsonify({'success': True, 'message': 'Bet ticket submitted and successfully verified!'})
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    if 'user' not in session: return redirect(url_for('login'))
+    if not users.get(session['user'], {}).get('is_admin', False): return "Forbidden", 403
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'start' and not state['is_running']:
+            state['is_running'] = True
+            state['start_time'] = time.time() - state['paused_elapsed']
+        elif action == 'stop' and state['is_running']:
+            state['is_running'] = False
+            state['paused_elapsed'] = time.time() - state['start_time']
+            
+    current_state = get_current_match_state()
+    current_state['is_running'] = state['is_running']
+    return render_template('admin.html', state=current_state, total_bets=placed_bets, company_balance=state['company_balance'])
+
+@app.route('/api/state')
+def get_state():
+    current_state = get_current_match_state()
+    standings = get_league_standings(current_state['round'])
+    
+    for b in placed_bets:
+        if b['status'] == 'PENDING' and b['round'] < current_state['round']:
+            past_fixtures = {f['home']: f for f in generate_fixtures_for_round(b['round'])}
+            
+            ticket_failed = False
+            for leg in b['selections']:
+                fix = past_fixtures.get(leg['home'])
+                if not fix:
+                    ticket_failed = True; break
+                    
+                hs, as_ = fix['home_score'], fix['away_score']
+                
+                if leg['market'] == 'HOME' and not (hs > as_): ticket_failed = True
+                elif leg['market'] == 'DRAW' and not (hs == as_): ticket_failed = True
+                elif leg['market'] == 'AWAY' and not (as_ > hs): ticket_failed = True
+                
+                if ticket_failed: break
+                
+            if ticket_failed:
+                b['status'] = 'LOST'
+                state['company_balance'] += b['stake'] 
+            else:
+                b['status'] = 'WON'
+                payout = round(b['stake'] * b['total_odds'], 2)
+                users[b['email']]['balance'] += payout
+                state['company_balance'] -= (payout - b['stake']) 
+
+    if current_state['phase'] == 'PLAYING':
+        logs_feed = [f"[System] Season {current_state['season']} | Round #{current_state['round']} active.", "[System] Placed bet pools locked during simulation."]
+    else:
+        logs_feed = [f"[System] Season {current_state['season']} | Round #{current_state['round']} complete.", "[System] Market Open. Accepting placements."]
+
+    return {
+        'phase': current_state['phase'],
+        'time': current_state['time'],
+        'round': current_state['round'],
+        'season': current_state['season'],
+        'fixtures': current_state['fixtures'],
+        'standings': standings,
+        'company_balance': state['company_balance'], 
+        'logs': logs_feed
+    }
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login')) # FIXED: Changes recursive 'logout' redirect loop back to clean login redirect
+
+if __name__ == '__main__':
+    app.run(debug=True)
