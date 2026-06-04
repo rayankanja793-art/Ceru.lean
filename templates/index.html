@@ -3,196 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Dashboard</title>
+    <title>SwiftPitch - Virtual Soccer Platform</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #223245; padding-bottom: 15px; margin-bottom: 20px; }
-        h1 { color: #ffcc00; margin: 0; font-size: 28px; }
-        h2 { color: #ffcc00; font-size: 18px; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #223245; padding-bottom: 5px; }
-        .grid { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr; gap: 15px; }
-        @media (max-width: 992px) { .grid { grid-template-columns: 1fr; } }
-        .card { background-color: #16222f; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #223245; }
-        .btn { background-color: #ffcc00; color: black; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
-        .timer { font-size: 24px; color: #00ff66; font-weight: bold; }
-        .bet-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #223245; font-size: 13px; }
-        .ticker-box { background-color: #0c131c; padding: 10px; border-radius: 5px; height: 60px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #a0aec0; border: 1px solid #223245; }
-        .scroll-box { max-height: 320px; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { padding: 6px 4px; border-bottom: 1px solid #223245; text-align: left; }
-        th { color: #a0aec0; }
-        .alert { background: rgba(255,204,0,0.15); border: 1px solid #ffcc00; padding: 10px; color:#ffcc00; border-radius: 5px; margin-bottom: 15px; font-size:13px; }
-        .input-field { width: 100%; padding: 8px; background: #0c131c; color: white; border: 1px solid #223245; margin-bottom: 10px; box-sizing: border-box; border-radius: 4px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b1118; color: #f5f7fa; margin: 0; padding: 15px; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #121b26; padding: 12px 20px; border-radius: 8px; border-bottom: 3px solid #ffcc00; margin-bottom: 20px; }
+        .logo { font-size: 22px; font-weight: bold; color: #ffcc00; text-transform: uppercase; letter-spacing: 1px; }
+        .main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+        @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+        .card { background-color: #121b26; border-radius: 8px; padding: 18px; border: 1px solid #1c2a39; margin-bottom: 15px; }
+        .phase-header { display: flex; justify-content: space-between; align-items: center; background-color: #ffcc00; color: #000; padding: 10px 15px; border-radius: 6px; font-weight: bold; font-size: 15px; margin-bottom: 15px; }
+        .fix-row { display: grid; grid-template-columns: 1fr 180px; align-items: center; padding: 10px; border-bottom: 1px solid #1c2a39; }
+        .odds-box { display: flex; gap: 5px; }
+        .odd-btn { background-color: #1c2a39; border: 1px solid #ffcc00; color: #ffcc00; padding: 6px; font-size: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; flex: 1; text-align: center; }
+        .odd-btn:hover { background-color: #ffcc00; color: #000; }
+        .odd-btn.active { background-color: #00ff66; color: #000; border-color: #00ff66; }
+        .slip-item { background: #1c2a39; padding: 10px; border-radius: 5px; margin-bottom: 8px; font-size: 12px; position: relative; border-left: 3px solid #00ff66; }
+        .remove-leg { position: absolute; right: 8px; top: 8px; color: #ff3333; cursor: pointer; font-weight: bold; }
+        .btn-action { width: 100%; background: #00ff66; color: #000; padding: 12px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-size: 14px; text-transform: uppercase; }
+        .btn-action:hover { background: #00cc52; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+        th, td { padding: 8px; border-bottom: 1px solid #1c2a39; }
+        th { color: #a0aec0; background-color: #0b1118; }
+        .badge { padding: 2px 5px; border-radius: 3px; font-weight: bold; font-size: 11px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- APP TOP BAR MENU -->
-        <div class="header">
-            <h1>SWIFTPITCH</h1>
-            <div>
-                {% if user and user.is_admin %}
-                    <a href="/admin" style="background-color: #ff3333; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 12px; margin-right: 10px;">🛠️ ADMIN</a>
-                {% endif %}
-                <a href="/logout" style="color: #ff3333; text-decoration: none; font-weight: bold; font-size: 13px;">Log Out →</a>
-            </div>
-        </div>
-
-        <!-- NOTIFICATION BANNER LINK -->
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}{% for m in messages %}<div class="alert">{{ m }}</div>{% endfor %}{% endif %}
-        {% endwith %}
-
-        <div class="grid">
-            
-            <!-- COLUMN 1: VIRTUAL LIVE MATCH CENTER -->
-            <div class="card">
-                <h2>Match Center</h2>
-                <p style="font-size:13px;">State: <strong id="live-phase" style="color: #ffcc00;">{{ state.phase }} PHASE</strong> | Time: <span class="timer" id="live-time">{{ state.time }}s</span></p>
-                <p style="font-size:13px; margin: 5px 0;" id="live-round">Season {{ state.season }} | Round #{{ state.round }}</p>
-                
-                <h4 id="match-header" style="color: #ffcc00; margin: 15px 0 5px 0; font-size: 13px;">⏳ FIXTURES SCHEDULE</h4>
-                <div class="scroll-box" id="match-list">
-                    {% for match in state.fixtures %}
-                        <div class="bet-row"><span>{{ match.home }} vs {{ match.away }}</span><span>Awaiting...</span></div>
-                    {% endfor %}
-                </div>
-
-                <h4 style="color: #00ff66; margin: 15px 0 5px 0; font-size: 13px;">📡 LIVE FEEDS & TELEMETRY</h4>
-                <div class="ticker-box" id="live-logs"><div>[System] Establishing link...</div></div>
-            </div>
-
-            <!-- COLUMN 2: SEASON RUNNING STANDINGS BOARD -->
-            <div class="card">
-                <h2>League Table Standings</h2>
-                <div class="scroll-box">
-                    <table>
-                        <thead>
-                            <tr><th>Pos</th><th>Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr>
-                        </thead>
-                        <tbody id="standings-body">
-                            {% for team in standings %}
-                                <tr>
-                                    <td>{{ loop.index }}</td>
-                                    <td><strong>{{ team.name }}</strong></td>
-                                    <td>{{ team.mp }}</td><td>{{ team.w }}</td><td>{{ team.d }}</td><td>{{ team.l }}</td>
-                                    <td style="color: #ffcc00; font-weight: bold;">{{ team.pts }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- COLUMN 3: FINANCES, REAL PAYMENT SLOTS, AND SLIPS -->
-            <div>
-                <!-- ACTIVE ACCOUNT CREDITS -->
-                <div class="card">
-                    <h2>Your Wallet</h2>
-                    <p>Available Balance: <strong style="font-size: 20px; color: #00ff66;">{{ user.balance }} KSH</strong></p>
-                    
-                    <hr style="border:0; border-top:1px solid #223245; margin:15px 0;">
-                    
-                    <!-- BET SLIP WIDGET FOR PLACEMENTS -->
-                    <form action="/place-bet" method="POST">
-                        <h4 style="color:#ffcc00; margin: 0 0 10px 0; font-size:13px;">Place Direct Win Bet</h4>
-                        <select name="selection" required class="input-field">
-                            {% for team in standings %}
-                                <option value="{{ team.name }}">{{ team.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <input type="number" name="stake" placeholder="Stake Amount (Bob)" min="1" required class="input-field">
-                        <button type="submit" class="btn">Submit Ticket</button>
-                    </form>
-                </div>
-
-                <!-- NEW: M-PESA GATEWAY STK REAL INTEGRATION COMPONENT -->
-                <div class="card" style="border-color: #00ff66;">
-                    <h2>M-Pesa Real Deposit</h2>
-                    <p style="font-size: 11px; color: #a0aec0; margin-top: 0; margin-bottom: 12px;">
-                        Enter your credentials to receive an instant Lipa Na M-Pesa secure checkout pin request on your handset.
-                    </p>
-                    <form action="/deposit" method="POST">
-                        <label style="font-size: 11px; color: #a0aec0; display: block; margin-bottom: 3px;">Safaricom Phone Number</label>
-                        <input type="tel" name="phone_number" placeholder="e.g., 254712345678" required class="input-field">
-                        
-                        <label style="font-size: 11px; color: #a0aec0; display: block; margin-bottom: 3px;">Amount (KSH)</label>
-                        <input type="number" name="amount" placeholder="Minimum 10 Bob" min="10" required class="input-field">
-                        
-                        <button type="submit" class="btn" style="background-color: #00ff66; color: black;">Request STK Push Prompt</button>
-                    </form>
-                </div>
-
-                <!-- TRANSACTIONS REGISTER RECORD -->
-                <div class="card" style="border-color:#223245;">
-                    <h2>Your Tickets</h2>
-                    <div class="scroll-box" style="max-height:140px;">
-                        {% for bet in bets %}
-                            <div class="bet-row">
-                                <span>R#{{ bet.round }} - {{ bet.selection }} ({{ bet.stake }} Bob)</span>
-                                <strong style="color:{% if bet.status=='WON' %}#00ff66{% elif bet.status=='LOST' %}#ff3333{% else %}#ffcc00{% endif %};">{{ bet.status }}</strong>
-                            </div>
-                        {% else %}
-                            <p style="font-size:12px; color:#a0aec0; text-align:center; margin:10px 0;">No tickets logged yet.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
+    <div class="navbar">
+        <div class="logo">⚽ SWIFTPITCH</div>
+        <div style="font-weight: bold; color:#a0aec0;">
+            Wallet Balance: <span style="color: #00ff66;" id="live-wallet">{{ "{:,.2f}".format(user.balance) }} KSH</span>
+            {% if user.is_admin %}
+                <a href="/admin" style="margin-left:15px; color:#ff3333; text-decoration:none;">[🛠️ Admin Panel]</a>
+            {% endif %}
+            <a href="/logout" style="margin-left: 15px; color: #ffcc00; text-decoration: none;">Logout</a>
         </div>
     </div>
 
-    <!-- MAIN TICKER EVENT LOOP AND LIVE STANDINGS SYNCHRONIZATION MATRIX -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for msg in messages %}
+          <div style="background-color: #1c2a39; color: #ffcc00; border: 1px solid #ffcc00; padding: 12px; border-radius: 5px; margin-bottom: 15px; font-weight: bold; font-size: 14px;">⚠️ {{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="main-layout">
+        <div>
+            <div class="card">
+                <div class="phase-header">
+                    <span id="display-phase">LOADING STATE...</span>
+                    <span id="display-timer">00s</span>
+                </div>
+                <h3 style="margin-top: 0; color:#a0aec0;">Season <span id="display-season">-</span> | Round #<span id="display-round">-</span> Match Fixtures</h3>
+                <div id="fixtures-container">
+                    </div>
+            </div>
+
+            <div class="card">
+                <h3 style="margin-top: 0; color:#ffcc00;">Italian League Standings Table</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Pos</th>
+                            <th>Club Name</th>
+                            <th>MP</th>
+                            <th>W</th>
+                            <th>D</th>
+                            <th>L</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standings-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div>
+            <div class="card" style="border-color: #00ff66;">
+                <h3 style="margin-top:0; color:#00ff66; display:flex; justify-content:space-between;">
+                    <span>📋 ACCUMULATOR SLIP</span>
+                    <span id="slip-count" style="font-size:12px; background:#1c2a39; padding:2px 8px; border-radius:10px; color:#fff;">0 Legs</span>
+                </h3>
+                <div id="empty-slip-msg" style="color:#a0aec0; font-size:13px; text-align:center; padding:15px 0;">
+                    Click any match odds (1, X, 2) to build a multi-leg accumulator ticket!
+                </div>
+                <div id="slip-legs-holder"></div>
+                
+                <div id="slip-calculator" style="display:none; border-top:1px solid #1c2a39; padding-top:10px; margin-top:10px;">
+                    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;">
+                        <span>Total Combined Odds:</span>
+                        <strong style="color:#ffcc00;" id="summary-odds">1.00</strong>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <label style="font-size:12px; color:#a0aec0; display:block; margin-bottom:3px;">Risk Capital Stake (KSH):</label>
+                        <input type="number" id="slip-stake" value="50" min="10" style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; font-weight:bold; border-radius:4px;">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:14px; background:rgba(0,255,102,0.1); padding:8px; border-radius:4px; margin-bottom:10px;">
+                        <span style="color:#00ff66;">Potential Return:</span>
+                        <strong style="color:#00ff66;" id="summary-payout">0.00 KSH</strong>
+                    </div>
+                    <button class="btn-action" onclick="submitAccumulatorTicket()">Submit Verified Multibet</button>
+                </div>
+            </div>
+
+            <div class="card" style="border-color: #ff3333;">
+                <h3 style="margin-top: 0; color:#ff3333;">💳 Secure Safaricom M-Pesa Funding</h3>
+                <form action="/deposit" method="POST">
+                    <label style="font-size:12px; color:#a0aec0; display:block; margin-bottom:3px;">M-Pesa Phone Line (07xx / 254xx):</label>
+                    <input type="text" name="phone_number" placeholder="e.g. 0712345678" required style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; border-radius:4px; margin-bottom:10px;">
+                    
+                    <label style="font-size:12px; color:#a0aec0; display:block; margin-bottom:3px;">Fund Capital (Min 10 Bob):</label>
+                    <input type="number" name="amount" min="10" placeholder="Amount in KSH" required style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; border-radius:4px; margin-bottom:10px;">
+                    
+                    <button type="submit" style="width:100%; background:#ff3333; color:white; font-weight:bold; padding:10px; border:none; border-radius:4px; cursor:pointer;">Initiate Instant Deposit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let selectedSelections = {}; // Tracks choices live by fixture ID
+
+        function updateBetslipUI() {
+            const holder = document.getElementById('slip-legs-holder');
+            const emptyMsg = document.getElementById('empty-slip-msg');
+            const calc = document.getElementById('slip-calculator');
+            
+            holder.innerHTML = '';
+            let keys = Object.keys(selectedSelections);
+            document.getElementById('slip-count').innerText = `${keys.length} Legs`;
+            
+            if(keys.length === 0) {
+                emptyMsg.style.display = 'block';
+                calc.style.display = 'none';
+                return;
+            }
+            
+            emptyMsg.style.display = 'none';
+            calc.style.display = 'block';
+            
+            let accumulatedOdds = 1.0;
+            
+            keys.forEach(id => {
+                let leg = selectedSelections[id];
+                accumulatedOdds *= leg.odds;
+                
+                let item = document.createElement('div');
+                item.className = 'slip-item';
+                item.innerHTML = `
+                    <span class="remove-leg" onclick="removeLeg('${id}')">×</span>
+                    <strong>${leg.home} vs ${leg.away}</strong><br/>
+                    Market Pick: <span style="color:#ffcc00; font-weight:bold;">${leg.market}</span> @ <strong>${leg.odds.toFixed(2)}</strong>
+                `;
+                holder.appendChild(item);
+            });
+            
+            let finalOdds = accumulatedOdds.toFixed(2);
+            document.getElementById('summary-odds').innerText = finalOdds;
+            
+            const stakeInput = document.getElementById('slip-stake');
+            const updatePayout = () => {
+                let stake = parseFloat(stakeInput.value) || 0;
+                document.getElementById('summary-payout').innerText = (stake * finalOdds).toLocaleString('en-US', {minimumFractionDigits:2}) + ' KSH';
+            };
+            stakeInput.oninput = updatePayout;
+            updatePayout();
+        }
+
+        function addLeg(fixtureId, home, away, market, odds) {
+            // Check market phase lock before registering selections
+            if(document.getElementById('display-phase').innerText.includes("PLAYING")) return;
+            
+            selectedSelections[fixtureId] = { fixture_id: fixtureId, home: home, away: away, market: market, odds: parseFloat(odds) };
+            updateBetslipUI();
+            
+            // Highlight element button changes visually
+            document.querySelectorAll(`[data-fix="${fixtureId}"]`).forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn_${fixtureId}_${market}`).classList.add('active');
+        }
+
+        function removeLeg(fixtureId) {
+            delete selectedSelections[fixtureId];
+            updateBetslipUI();
+            document.querySelectorAll(`[data-fix="${fixtureId}"]`).forEach(btn => btn.classList.remove('active'));
+        }
+
+        function submitAccumulatorTicket() {
+            let legs = Object.values(selectedSelections);
+            let stakeAmt = document.getElementById('slip-stake').value;
+            
+            fetch('/place-multibet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ selections: legs, stake: stakeAmt })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if(data.success) {
+                    selectedSelections = {};
+                    updateBetslipUI();
+                    document.querySelectorAll('.odd-btn').forEach(b => b.classList.remove('active'));
+                    window.location.reload();
+                }
+            });
+        }
+
+        // Background sync loop to render dynamic live layout changes
         setInterval(function() {
             fetch('/api/state')
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
-                    // Update Text labels
-                    document.getElementById('live-phase').innerText = data.phase + ' PHASE';
-                    document.getElementById('live-time').innerText = data.time + 's';
-                    document.getElementById('live-round').innerText = 'Season ' + data.season + ' | Round #' + data.round;
+                    document.getElementById('display-phase').innerText = data.phase === 'BETTING' ? '⏳ MARKET OPEN - PLACE PLACEMENTS' : '⚽ MATCHES LIVE IN SIMULATION';
+                    document.getElementById('display-timer').innerText = data.time + 's';
+                    document.getElementById('display-season').innerText = data.season;
+                    document.getElementById('display-round').innerText = data.round;
 
-                    // Update live server telemetry logs
-                    const logContainer = document.getElementById('live-logs');
-                    logContainer.innerHTML = ''; 
-                    data.logs.forEach(line => {
-                        const d = document.createElement('div'); d.innerText = line; logContainer.appendChild(d);
-                    });
-
-                    // Match state visualization rendering
-                    const matchHeader = document.getElementById('match-header');
-                    const matchList = document.getElementById('match-list');
-                    matchList.innerHTML = '';
-                    
-                    if (data.phase === 'PLAYING') {
-                        matchHeader.innerText = '⚽ LIVE MATCHES IN PROGRESS'; matchHeader.style.color = '#00ff66';
-                        data.fixtures.forEach(m => {
-                            matchList.innerHTML += `<div class="bet-row"><span>${m.home} vs ${m.away}</span><strong style="color:#00ff66;">${m.home_score} - ${m.away_score}</strong></div>`;
+                    const fixHolder = document.getElementById('fixtures-container');
+                    if(data.phase === 'BETTING') {
+                        let html = '';
+                        data.fixtures.forEach(f => {
+                            let activeHome = selectedSelections[f.id]?.market === 'HOME' ? 'active' : '';
+                            let activeDraw = selectedSelections[f.id]?.market === 'DRAW' ? 'active' : '';
+                            let activeAway = selectedSelections[f.id]?.market === 'AWAY' ? 'active' : '';
+                            
+                            html += `
+                                <div class="fix-row">
+                                    <div style="font-size:14px;"><strong>${f.home}</strong> vs <strong>${f.away}</strong></div>
+                                    <div class="odds-box">
+                                        <button id="btn_${f.id}_HOME" data-fix="${f.id}" class="odd-btn ${activeHome}" onclick="addLeg('${f.id}','${f.home}','${f.away}','HOME','${f.odds.HOME}')">1 (${f.odds.HOME})</button>
+                                        <button id="btn_${f.id}_DRAW" data-fix="${f.id}" class="odd-btn ${activeDraw}" onclick="addLeg('${f.id}','${f.home}','${f.away}','DRAW','${f.odds.DRAW}')">X (${f.odds.DRAW})</button>
+                                        <button id="btn_${f.id}_AWAY" data-fix="${f.id}" class="odd-btn ${activeAway}" onclick="addLeg('${f.id}','${f.home}','${f.away}','AWAY','${f.odds.AWAY}')">2 (${f.odds.AWAY})</button>
+                                    </div>
+                                </div>
+                            `;
                         });
+                        fixHolder.innerHTML = html;
                     } else {
-                        matchHeader.innerText = '⏳ PENDING MATCHES (NEXT ROUND)'; matchHeader.style.color = '#ffcc00';
-                        data.fixtures.forEach(m => {
-                            matchList.innerHTML += `<div class="bet-row"><span>${m.home} vs ${m.away}</span><span style="color:#a0aec0;">Kickoff in ${data.time}s</span></div>`;
+                        // Matches are playing: lock odds buttons and print live score counters
+                        let html = '';
+                        data.fixtures.forEach(f => {
+                            html += `
+                                <div class="fix-row" style="grid-template-columns: 1fr 60px;">
+                                    <div style="font-size:14px;"><strong>${f.home}</strong> vs <strong>${f.away}</strong></div>
+                                    <div style="background:#ffcc00; color:black; font-weight:bold; text-align:center; padding:4px; border-radius:4px; font-size:14px;">
+                                        ${f.home_score} - ${f.away_score}
+                                    </div>
+                                </div>
+                            `;
                         });
+                        fixHolder.innerHTML = html;
                     }
 
-                    // Dynamically map table parameters from JSON responses without manual window refreshes
-                    const standingsBody = document.getElementById('standings-body');
-                    standingsBody.innerHTML = '';
-                    data.standings.forEach((team, idx) => {
-                        standingsBody.innerHTML += `
-                            <tr>
-                                <td>${idx + 1}</td>
-                                <td><strong>${team.name}</strong></td>
-                                <td>${team.mp}</td><td>${team.w}</td><td>${team.d}</td><td>${team.l}</td>
-                                <td style="color: #ffcc00; font-weight: bold;">${team.pts}</td>
-                            </tr>
-                        `;
+                    // Refresh table lines
+                    let tableHtml = '';
+                    data.standings.forEach((t, i) => {
+                        tableHtml += `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.mp}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td style="color:#ffcc00; font-weight:bold;">${t.pts}</td></tr>`;
                     });
-                }).catch(err => console.log("Synchronizing data stream..."));
-        }, 1000);
+                    document.getElementById('standings-body').innerHTML = tableHtml;
+                });
+        }, 1500);
     </script>
 </body>
 </html>
