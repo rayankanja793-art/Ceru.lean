@@ -10,15 +10,15 @@
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff3333; padding-bottom: 15px; margin-bottom: 20px; }
         h1 { color: #ff3333; margin: 0; font-size: 24px; }
         .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        @media (max-width: 768px) { .grid-stats { grid-template-columns: 1fr; } }
         .card { background-color: #16222f; padding: 20px; border-radius: 8px; border: 1px solid #ff3333; }
         .btn { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-start { background-color: #00ff66; color: black; }
         .btn-stop { background-color: #ff3333; color: white; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 15px; text-align: left; }
-        th, td { padding: 8px; border-bottom: 1px solid #223245; }
+        th, td { padding: 10px; border-bottom: 1px solid #223245; vertical-align: top; }
         th { background-color: #0c131c; color: #a0aec0; }
         .badge { padding: 3px 6px; border-radius: 3px; font-weight: bold; font-size: 11px; }
+        .leg-indicator { background: #0c131c; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 2px; font-size: 11px; }
     </style>
 </head>
 <body>
@@ -62,24 +62,34 @@
         </div>
 
         <div class="card" style="border-color: #223245;">
-            <h2>User Activity & Placed Bets Tracker</h2>
-            <p style="color:#a0aec0; font-size:13px;">Monitors every transaction ticket generated across user ledger profiles dynamically.</p>
+            <h2>User Activity & Placed Multibet Tickets Tracker</h2>
             <table>
                 <thead>
                     <tr>
+                        <th>Ticket ID</th>
                         <th>User Account</th>
                         <th>Round Reference</th>
-                        <th>Selection Pick</th>
-                        <th>Risked Stake</th>
-                        <th>Ticket Outcome</th>
+                        <th>Accumulator Selections (Legs)</th>
+                        <th>Total Odds</th>
+                        <th>Stake Amount</th>
+                        <th>Outcome</th>
                     </tr>
                 </thead>
-                <tbody id="admin-bets-body">
+                <tbody>
                     {% for bet in total_bets %}
                     <tr>
+                        <td><code style="color:#a0aec0;">{{ bet.id }}</code></td>
                         <td><strong>{{ bet.email }}</strong></td>
-                        <td>Round #{{ bet.round }}</td>
-                        <td><span style="color:#ffcc00;">{{ bet.selection }}</span></td>
+                        <td>S{{ bet.season }} | R#{{ bet.round }}</td>
+                        <td>
+                            {% for leg in bet.selections %}
+                            <div class="leg-indicator">
+                                <span>{{ leg.home }} v {{ leg.away }}</span> -> 
+                                <strong style="color:#ffcc00;">{{ leg.market }}</strong> (${{ leg.odds }})
+                            </div>
+                            {% endfor %}
+                        </td>
+                        <td style="color:#ffcc00; font-weight:bold;">x{{ bet.total_odds }}</td>
                         <td>{{ bet.stake }} KSH</td>
                         <td>
                             {% if bet.status == 'PENDING' %}
@@ -91,7 +101,7 @@
                             {% endif %}
                         </td>
                     </tr>
-                    {% endfor %}
+                    {% endfor ] %}
                 </tbody>
             </table>
         </div>
@@ -100,12 +110,11 @@
     <script>
         setInterval(function() {
             fetch('/api/state')
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
-                    // Pulls company_balance from API loop data and updates the green UI display text live
                     document.getElementById('admin-vault-display').innerText = data.company_balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KSH';
-                }).catch(err => console.log("Syncing balance vault..."));
-        }, 1000);
+                });
+        }, 1500);
     </script>
 </body>
 </html>
