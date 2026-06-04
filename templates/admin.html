@@ -3,60 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Admin Console</title>
+    <title>SwiftPitch - Admin Panel</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff3333; padding-bottom: 15px; margin-bottom: 20px; }
-        h1 { color: #ff3333; margin: 0; font-size: 26px; }
-        .card { background-color: #16222f; padding: 25px; border-radius: 8px; border: 1px solid #ff3333; margin-bottom: 20px; }
-        .btn { border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 16px; margin-right: 10px; }
+        h1 { color: #ff3333; margin: 0; font-size: 24px; }
+        .card { background-color: #16222f; padding: 20px; border-radius: 8px; border: 1px solid #ff3333; margin-bottom: 20px; }
+        .btn { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-start { background-color: #00ff66; color: black; }
         .btn-stop { background-color: #ff3333; color: white; }
-        .back-btn { color: #ffcc00; text-decoration: none; font-weight: bold; }
-        .status-indicator { display: inline-block; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 15px; text-align: left; }
+        th, td { padding: 8px; border-bottom: 1px solid #223245; }
+        th { background-color: #0c131c; color: #a0aec0; }
+        .badge { padding: 3px 6px; border-radius: 3px; font-weight: bold; font-size: 11px; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div class="header">
-            <h1>🛠️ SWIFTPITCH SYSTEM CONTROLS</h1>
-            <a href="/" class="back-btn">← Return To Dashboard</a>
+            <h1>🛠️ SWIFTPITCH ADMINISTRATION PANEL</h1>
+            <a href="/" style="color:#ffcc00; text-decoration:none; font-weight:bold;">← Return To Dashboard</a>
         </div>
 
         <div class="card">
-            <h2>Match Engine Master Controls</h2>
-            <p>Use these overrides to change or freeze global league cycles across all player devices instantly.</p>
-            
-            <div>
-                {% if state and state.is_running %}
-                    <span class="status-indicator" style="background-color: rgba(0, 255, 102, 0.2); color: #00ff66;">● ENGINE ACTIVE (RUNNING AUTOMATICALLY)</span>
+            <h2>Simulation Engine Master Controls</h2>
+            <p>Status: 
+                {% if state.is_running %}
+                    <strong style="color:#00ff66;">● RUNNING AUTOMATICALLY</strong>
                 {% else %}
-                    <span class="status-indicator" style="background-color: rgba(255, 51, 51, 0.2); color: #ff3333;">■ ENGINE PAUSED (FREEZE TIME LOGIC)</span>
+                    <strong style="color:#ff3333;">■ PAUSED / FROZEN</strong>
                 {% endif %}
-            </div>
-
-            <p>Current Active Round: <strong>Round #{{ state.round if state else 1 }}</strong></p>
-            <p>Current Phase Status: <strong style="color: #ffcc00;">{{ state.phase if state else 'BETTING' }} PHASE</strong></p>
-            <p>Time Remaining in Sequence: <strong>{{ state.time if state else 60 }} seconds</strong></p>
-
-            <hr style="border: 0; border-top: 1px solid #223245; margin: 20px 0;">
-
-            <form method="POST" action="/admin">
-                {% if state and state.is_running %}
-                    <button type="submit" name="action" value="stop" class="btn btn-stop">🛑 Force Stop & Pause Engine Clock</button>
+            </p>
+            <p>Season Iteration: <strong>Season {{ state.season }}</strong> | Active Round: <strong>Round #{{ state.round }}</strong></p>
+            
+            <form method="POST" action="/admin" style="margin-top: 15px;">
+                {% if state.is_running %}
+                    <button type="submit" name="action" value="stop" class="btn btn-stop">🛑 Force Stop & Pause Engine</button>
                 {% else %}
-                    <button type="submit" name="action" value="start" class="btn btn-start">▶ Start / Resume Simulation Engine</button>
+                    <button type="submit" name="action" value="start" class="btn btn-start">▶ Start / Resume Engine Simulation</button>
                 {% endif %}
             </form>
         </div>
 
         <div class="card" style="border-color: #223245;">
-            <h3 style="margin-top: 0; color: #a0aec0;">Admin Operations Manual</h3>
-            <p style="font-size: 14px; color: #a0aec0; line-height: 1.5; margin: 0;">
-                The platform relies on system baseline Unix epoch checks. Pausing holds calculations at standard parameters. Resuming recalibrates standard round loops for all logged-in accounts.
-            </p>
+            <h2>User Activity & Placed Bets Tracker</h2>
+            <p style="color:#a0aec0; font-size:13px;">Monitors every transaction ticket generated across user ledger profiles dynamically.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User Account</th>
+                        <th>Round Reference</th>
+                        <th>Selection Pick</th>
+                        <th>Risked Stake</th>
+                        <th>Ticket Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bet in total_bets %}
+                    <tr>
+                        <td><strong>{{ bet.email }}</strong></td>
+                        <td>Round #{{ bet.round }}</td>
+                        <td><span style="color:#ffcc00;">{{ bet.selection }}</span></td>
+                        <td>{{ bet.stake }} KSH</td>
+                        <td>
+                            {% if bet.status == 'PENDING' %}
+                                <span class="badge" style="background: rgba(255,204,0,0.2); color:#ffcc00;">PENDING</span>
+                            {% elif bet.status == 'WON' %}
+                                <span class="badge" style="background: rgba(0,255,102,0.2); color:#00ff66;">WON</span>
+                            {% else %}
+                                <span class="badge" style="background: rgba(255,51,51,0.2); color:#ff3333;">LOST</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
