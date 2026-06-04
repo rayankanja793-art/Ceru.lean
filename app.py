@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for, flash
+from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
 import time
 import random
 import requests
@@ -24,16 +24,14 @@ users = {
     },
     'player@test.com': {
         'password': 'password123',
-        'balance': 250,
+        'balance': 1000,
         'bonus_unlocked': True,
         'is_admin': False
     }
 }
 
-placed_bets = [
-    {'email': 'player@test.com', 'round': 1, 'selection': 'Roma', 'stake': 50, 'status': 'PENDING'},
-    {'email': 'player@test.com', 'round': 0, 'selection': 'Juventus', 'stake': 100, 'status': 'WON'}
-]
+# Placed bets now look like: {'email':..., 'round':..., 'selections': [{'home': 'Roma', 'away': 'Juventus', 'market': 'HOME', 'odds': 1.85}], 'stake': 100, 'total_odds': 1.85, 'status': 'PENDING'}
+placed_bets = []
 
 LEAGUE_TEAMS = [
     "Roma", "Juventus", "Milaan Reds", "Torino", "Fiorentina",
@@ -68,6 +66,8 @@ def get_mpesa_access_token():
 # --- CORE SIMULATION ENGINE LOGIC ---
 
 def generate_fixtures_for_round(round_num):
+    """Generates consistent pairs, virtual odds, and scores for any given round."""
+    # Build unique seed specifically for odds generation
     random.seed(round_num + 999) 
     shuffled_teams = list(LEAGUE_TEAMS)
     random.shuffle(shuffled_teams)
@@ -76,11 +76,23 @@ def generate_fixtures_for_round(round_num):
     for i in range(0, len(shuffled_teams), 2):
         home = shuffled_teams[i]
         away = shuffled_teams[i+1]
+        
+        # Deterministic generation of realistic decimal odds
+        home_odds = round(random.uniform(1.30, 4.50), 2)
+        draw_odds = round(random.uniform(2.60, 3.80), 2)
+        away_odds = round(random.uniform(1.40, 5.00), 2)
+        
         fixtures.append({
+            'id': f"fix_{round_num}_{i}",
             'home': home,
             'away': away,
             'home_score': random.randint(0, 4),
-            'away_score': random.randint(0, 4)
+            'away_score': random.randint(0, 4),
+            'odds': {
+                'HOME': home_odds,
+                'DRAW': draw_odds,
+                'AWAY': away_odds
+            }
         })
     return fixtures
 
@@ -120,16 +132,12 @@ def get_current_match_state():
 
 def get_league_standings(current_round):
     table = {team: {'name': team, 'mp': 0, 'w': 0, 'd': 0, 'l': 0, 'pts': 0} for team in LEAGUE_TEAMS}
-    
     for r in range(1, current_round):
         fixtures = generate_fixtures_for_round(r)
         for f in fixtures:
             h, a = f['home'], f['away']
             hs, as_ = f['home_score'], f['away_score']
-            
-            table[h]['mp'] += 1
-            table[a]['mp'] += 1
-            
+            table[h]['mp'] += 1; table[a]['mp'] += 1
             if hs > as_:
                 table[h]['w'] += 1; table[h]['pts'] += 3; table[a]['l'] += 1
             elif as_ > hs:
@@ -168,32 +176,25 @@ def register():
     if email in users:
         flash("Email registered.")
         return redirect(url_for('login'))
-    users[email] = {'password': password, 'balance': 100, 'bonus_unlocked': False, 'is_admin': False}
+    users[email] = {'password': password, 'balance': 250, 'bonus_unlocked': False, 'is_admin': False}
     session['user'] = email
     return redirect(url_for('index'))
 
 @app.route('/deposit', methods=['POST'])
 def deposit():
-    if 'user' not in session: 
-        return redirect(url_for('login'))
-        
+    if 'user' not in session: return redirect(url_for('login'))
     phone = request.form.get('phone_number', '').strip()
-    try:
-        amount = int(float(request.form.get('amount', 0)))
-    except ValueError:
-        amount = 0
+    try: amount = int(float(request.form.get('amount', 0)))
+    except ValueError: amount = 0
         
     if amount < 10:  
         flash("Minimum payment threshold is 10 KSH.")
         return redirect(url_for('index'))
         
-    if phone.startswith('0'):
-        phone = '254' + phone[1:]
-    elif phone.startswith('+'):
-        phone = phone[1:]
+    if phone.startswith('0'): phone = '254' + phone[1:]
+    elif phone.startswith('+'): phone = phone[1:]
 
     access_token = get_mpesa_access_token()
-    
     if not access_token or MPESA_CONSUMER_KEY == 'YOUR_ACTUAL_DARAJA_CONSUMER_KEY':
         users[session['user']]['balance'] += amount
         flash(f"[Simulation] STK push prompt of {amount} KSH sent to {phone}. Wallet updated!")
@@ -221,107 +222,55 @@ def deposit():
     try:
         api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
         res = requests.post(api_url, json=payload, headers=headers, timeout=15)
-        
         if res.status_code == 200:
-            flash(f"STK Push dispatched successfully! Complete payment verification prompt on phone {phone}.")
+            flash(f"STK Push dispatched successfully! Complete verification prompt on phone {phone}.")
         else:
             users[session['user']]['balance'] += amount
             flash("Safaricom Gateway busy. Transaction completed locally instead.")
     except Exception:
         users[session['user']]['balance'] += amount
         flash("Connection timed out. Local simulation credit executed.")
-
     return redirect(url_for('index'))
 
-@app.route('/place-bet', methods=['POST'])
-def place_bet():
-    if 'user' not in session: return redirect(url_for('login'))
-    selection = request.form.get('selection')
-    try: stake = float(request.form.get('stake', 0))
+@app.route('/place-multibet', methods=['POST'])
+def place_multibet():
+    """Processes a single or multi-leg structural bet ticket from the coupon frontend slip."""
+    if 'user' not in session: return jsonify({'success': False, 'message': 'Session expired.'}), 401
+    
+    current_state = get_current_match_state()
+    if current_state['phase'] != 'BETTING':
+        return jsonify({'success': False, 'message': 'Market closed! Matches are already in play.'}), 400
+        
+    data = request.get_json() or {}
+    selections = data.get('selections', []) # List of maps containing match details
+    try: stake = float(data.get('stake', 0))
     except ValueError: stake = 0
     
-    user = users[session['user']]
-    current_state = get_current_match_state()
-    
-    if current_state['phase'] != 'BETTING':
-        flash("Market closed! Matches are already in progress.")
-        return redirect(url_for('index'))
+    if stake < 10:
+        return jsonify({'success': False, 'message': 'Minimum stake is 10 KSH.'}), 400
         
-    if 0 < stake <= user['balance']:
-        user['balance'] -= stake
-        placed_bets.append({
-            'email': session['user'],
-            'round': current_state['round'],
-            'selection': selection,
-            'stake': stake,
-            'status': 'PENDING'
-        })
-        flash("Bet placed successfully!")
-    else:
-        flash("Insufficient balance or invalid stake amount.")
-    return redirect(url_for('index'))
+    user = users[session['user']]
+    if user['balance'] < stake:
+        return jsonify({'success': False, 'message': 'Insufficient account balance.'}), 400
+        
+    if not selections:
+        return jsonify({'success': False, 'message': 'Your betslip coupon is completely empty.'}), 400
 
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    if 'user' not in session: return redirect(url_for('login'))
-    if not users.get(session['user'], {}).get('is_admin', False): return "Forbidden", 403
+    # Cross-reference odds against server-side fixtures to completely stop client-side hacking
+    current_fixtures = {f['id']: f for f in current_state['fixtures']}
+    validated_selections = []
+    accumulated_odds = 1.0
     
-    if request.method == 'POST':
-        action = request.form.get('action')
-        if action == 'start' and not state['is_running']:
-            state['is_running'] = True
-            state['start_time'] = time.time() - state['paused_elapsed']
-        elif action == 'stop' and state['is_running']:
-            state['is_running'] = False
-            state['paused_elapsed'] = time.time() - state['start_time']
+    for sel in selections:
+        fix_id = sel.get('fixture_id')
+        market = sel.get('market') # 'HOME', 'DRAW', 'AWAY'
+        
+        if fix_id not in current_fixtures:
+            return jsonify({'success': False, 'message': 'Invalid match selection found.'}), 400
             
-    current_state = get_current_match_state()
-    current_state['is_running'] = state['is_running']
-    return render_template('admin.html', state=current_state, total_bets=placed_bets, company_balance=state['company_balance'])
-
-@app.route('/api/state')
-def get_state():
-    current_state = get_current_match_state()
-    standings = get_league_standings(current_state['round'])
-    
-    for b in placed_bets:
-        if b['status'] == 'PENDING' and b['round'] < current_state['round']:
-            past_fixtures = generate_fixtures_for_round(b['round'])
-            won = False
-            for f in past_fixtures:
-                if f['home'] == b['selection'] and f['home_score'] > f['away_score']: won = True
-                if f['away'] == b['selection'] and f['away_score'] > f['home_score']: won = True
+        fixture = current_fixtures[fix_id]
+        if market not in ['HOME', 'DRAW', 'AWAY']:
+            return jsonify({'success': False, 'message': 'Invalid market option choice.'}), 400
             
-            if won:
-                b['status'] = 'WON'
-                payout = b['stake'] * 2
-                users[b['email']]['balance'] += payout
-                state['company_balance'] -= (payout - b['stake'])
-            else:
-                b['status'] = 'LOST'
-                state['company_balance'] += b['stake']
-
-    # HIDDEN FROM PUBLIC: The telemetry log channel no longer leaks the raw company vault variables
-    if current_state['phase'] == 'PLAYING':
-        logs_feed = [f"[System] Season {current_state['season']} | Round #{current_state['round']} active.", "[System] Placed bet pools locked during simulation."]
-    else:
-        logs_feed = [f"[System] Season {current_state['season']} | Round #{current_state['round']} complete.", "[System] Market Open. Accepting placements."]
-
-    return {
-        'phase': current_state['phase'],
-        'time': current_state['time'],
-        'round': current_state['round'],
-        'season': current_state['season'],
-        'fixtures': current_state['fixtures'],
-        'standings': standings,
-        'company_balance': state['company_balance'], 
-        'logs': logs_feed
-    }
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    app.run(debug=True)
+        market_odds = fixture['odds'][market]
+        accum
