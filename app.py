@@ -124,7 +124,6 @@ def get_current_match_state():
         phase = 'PLAYING'
         time_left = 115 - time_into_current_loop
         
-    # Generate both lanes concurrently using separate seed indexes
     italian_fixtures = generate_fixtures_for_round(current_round, ITALIAN_TEAMS, 111)
     english_fixtures = generate_fixtures_for_round(current_round, ENGLISH_TEAMS, 222)
         
@@ -140,8 +139,6 @@ def get_current_match_state():
 
 def generate_live_commentary(fixtures_ita, fixtures_eng, time_into_loop, round_num):
     random.seed(time_into_loop + round_num)
-    
-    # Merge both match coupons to allow the AI commentator to watch both lanes
     all_fixtures = fixtures_ita + fixtures_eng
     focus_match = random.choice(all_fixtures)
     
@@ -166,10 +163,7 @@ def generate_live_commentary(fixtures_ita, fixtures_eng, time_into_loop, round_n
         f"🎙️ [{match_minute}'] Tactical battle ongoing in midfield between {home} and {away}.",
         f"🎙️ [{match_minute}'] {home} is maintaining possession nicely, looking for a crossing opportunity.",
         f"🎙️ [{match_minute}'] Crucial sliding tackle intercept from the {away} central defensive midfielder!",
-        f"🎙️ [{match_minute}'] High intensity pressure here as {away} presses deep up the wings.",
-        f"🎙️ [{match_minute}'] {home} earns a corner kick after a deflected cross over the back line.",
-        f"🎙️ [{match_minute}'] Yellow card! Defending player penalized for an aggressive tackle.",
-        f"🎙️ [{match_minute}'] SPECTACULAR SAVE! The goalkeeper dives wide to deny {away} a clean opener!"
+        f"🎙️ [{match_minute}'] High intensity pressure here as {away} presses deep up the wings."
     ]
     
     if (h_score > 0 or a_score > 0) and random.random() > 0.65:
@@ -204,9 +198,8 @@ def index():
         
     try:
         current_state = get_current_match_state()
-        standings_ita = get_league_standings(current_state['round'], ITALIAN_TEAMS, 111)
         my_bets = [b for b in placed_bets if b['email'] == session['user']]
-        return render_template('index.html', state=current_state, user=users[session['user']], standings=standings_ita, bets=my_bets)
+        return render_template('index.html', state=current_state, user=users[session['user']], bets=my_bets)
     except Exception as e:
         session.clear()
         return redirect(url_for('login'))
@@ -220,68 +213,185 @@ def login():
             session['user'] = email
             return redirect(url_for('index'))
         flash("Invalid email or password.")
-    return render_template('login.html')
+    return '''
+    <body style="background:#0b1118; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
+        <div style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center;">
+            <h2 style="color:#ffcc00; margin-bottom:20px;">⚽ SWIFTPITCH LOGIN</h2>
+            <form method="POST">
+                <input type="text" name="email" placeholder="Email Address" required style="width:90%; padding:10px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <input type="password" name="password" placeholder="Password" required style="width:90%; padding:10px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <button type="submit" style="width:97%; background:#00ff66; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase;">Sign In</button>
+            </form>
+        </div>
+    </body>
+    '''
 
-@app.route('/register', methods=['POST'])
-def register():
-    email = request.form.get('email', '').strip()
-    password = request.form.get('password', '').strip()
-    if email in users:
-        flash("Email already registered.")
-        return redirect(url_for('login'))
+@app.route('/place-multibet', methods=['POST'])
+def place_multibet():
+    if 'user' not in session: return jsonify({'success': False, 'message': 'Session expired.'}), 401
     
-    users[email] = {'password': password, 'balance': 250, 'bonus_unlocked': False, 'is_admin': False}
-    session['user'] = email
-    return redirect(url_for('index'))
+    current_state = get_current_match_state()
+    if current_state['phase'] != 'BETTING':
+        return jsonify({'success': False, 'message': 'Market closed! Matches are already in play.'}), 400
+        
+    data = request.get_json() or {}
+    selections = data.get('selections', []) 
+    try: stake = float(data.get('stake', 0))
+    except ValueError: stake = 0
+    
+    if stake < 10:
+        return jsonify({'success': False, 'message': 'Minimum stake is 10 KSH.'}), 400
+        
+    user = users[session['user']]
+    if user['balance'] < stake:
+        return jsonify({'success': False, 'message': 'Insufficient account balance.'}), 400
+        
+    if not selections:
+        return jsonify({'success': False, 'message': 'Your betslip coupon is completely empty.'}), 400
+
+    current_fixtures = {}
+    for f in current_state['italian_fixtures']: current_fixtures[f['id']] = f
+    for f in current_state['english_fixtures']: current_fixtures[f['id']] = f
+    
+    validated_selections = []
+    accumulated_odds = 1.0
+    
+    for sel in selections:
+        fix_id = sel.get('fixture_id')
+        market = sel.get('market') 
+        
+        if fix_id not in current_fixtures:
+            return jsonify({'success': False, 'message': 'Invalid match selection found.'}), 400
+            
+        fixture = current_fixtures[fix_id]
+        market_odds = fixture['odds'][market]
+        accumulated_odds *= market_odds
+        
+        validated_selections.append({
+            'fixture_id': fix_id,
+            'home': fixture['home'],
+            'away': fixture['away'],
+            'market': market,
+            'odds': market_odds
+        })
+        
+    accumulated_odds = round(accumulated_odds, 2)
+    user['balance'] -= stake
+    
+    placed_bets.append({
+        'id': f"ticket_{int(time.time())}_{random.randint(1000,9999)}",
+        'email': session['user'],
+        'round': current_state['round'],
+        'season': current_state['season'],
+        'selections': validated_selections,
+        'stake': stake,
+        'total_odds': accumulated_odds,
+        'status': 'PENDING'
+    })
+    
+    return jsonify({'success': True, 'message': 'Bet ticket submitted and successfully verified!'})
 
 @app.route('/deposit', methods=['POST'])
 def deposit():
     if 'user' not in session: return redirect(url_for('login'))
-    phone = request.form.get('phone_number', '').strip()
     try: amount = int(float(request.form.get('amount', 0)))
     except ValueError: amount = 0
-        
-    if amount < 10:  
-        flash("Minimum payment threshold is 10 KSH.")
-        return redirect(url_for('index'))
-        
-    if phone.startswith('0'): phone = '254' + phone[1:]
-    elif phone.startswith('+'): phone = phone[1:]
-
-    access_token = get_mpesa_access_token()
-    if not access_token or MPESA_CONSUMER_KEY == 'YOUR_ACTUAL_DARAJA_CONSUMER_KEY':
+    if amount >= 10:
         users[session['user']]['balance'] += amount
-        flash(f"[Simulation] STK push prompt of {amount} KSH sent to {phone}. Wallet updated!")
-        return redirect(url_for('index'))
+        flash(f"Deposited {amount} KSH successfully!")
+    return redirect(url_for('index'))
 
-    timestamp = time.strftime('%Y%m%d%H%M%S')
-    password_string = MPESA_SHORTCODE + MPESA_PASSKEY + timestamp
-    encoded_password = base64.b64encode(password_string.encode()).decode('utf-8')
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    if 'user' not in session: return redirect(url_for('login'))
+    if not users.get(session['user'], {}).get('is_admin', False): return "Forbidden", 403
     
-    headers = {"Authorization": f"Bearer {access_token}"}
-    payload = {
-        "BusinessShortCode": MPESA_SHORTCODE,
-        "Password": encoded_password,
-        "Timestamp": timestamp,
-        "TransactionType": "CustomerPayBillOnline",
-        "Amount": amount,
-        "PartyA": phone,
-        "PartyB": MPESA_SHORTCODE,
-        "PhoneNumber": phone,
-        "CallBackURL": "https://your-app.onrender.com/api/mpesa-callback",  
-        "AccountReference": "SwiftPitchWallet",
-        "TransactionDesc": "Wallet Funding"
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'start' and not state['is_running']:
+            state['is_running'] = True
+            state['start_time'] = time.time() - state['paused_elapsed']
+        elif action == 'stop' and state['is_running']:
+            state['is_running'] = False
+            state['paused_elapsed'] = time.time() - state['start_time']
+            
+    current_state = get_current_match_state()
+    current_state['is_running'] = state['is_running']
+    
+    # Simple, functional inline Admin layout to prevent template loading issues
+    return f'''
+    <body style="background:#0b1118; color:white; font-family:sans-serif; padding:30px;">
+        <h2 style="color:#ffcc00;">🛠️ SWIFTPITCH PRIVATE ADMIN PANEL</h2>
+        <p>Current Match Loop Status: <strong>{"RUNNING" if current_state['is_running'] else "PAUSED"}</strong></p>
+        <form method="POST">
+            <button type="submit" name="action" value="start" style="padding:10px 20px; background:#00ff66; border:none; margin-right:10px; font-weight:bold; cursor:pointer;">START SIMULATION</button>
+            <button type="submit" name="action" value="stop" style="padding:10px 20px; background:#ff3333; color:white; border:none; font-weight:bold; cursor:pointer;">PAUSE SIMULATION</button>
+        </form>
+        <br><a href="/" style="color:#ffcc00; text-decoration:none;">← Return to Main Sportsbook</a>
+    </body>
+    '''
+
+@app.route('/api/state')
+def get_state():
+    current_state = get_current_match_state()
+    standings_ita = get_league_standings(current_state['round'], ITALIAN_TEAMS, 111)
+    standings_eng = get_league_standings(current_state['round'], ENGLISH_TEAMS, 222)
+    
+    # Process pending bets
+    for b in placed_bets:
+        if b['status'] == 'PENDING' and b['round'] < current_state['round']:
+            past_ita = {f['home']: f for f in generate_fixtures_for_round(b['round'], ITALIAN_TEAMS, 111)}
+            past_eng = {f['home']: f for f in generate_fixtures_for_round(b['round'], ENGLISH_TEAMS, 222)}
+            past_fixtures = {**past_ita, **past_eng}
+            
+            ticket_failed = False
+            for leg in b['selections']:
+                fix = past_fixtures.get(leg['home'])
+                if not fix:
+                    ticket_failed = True; break
+                hs, as_ = fix['home_score'], fix['away_score']
+                if leg['market'] == 'HOME' and not (hs > as_): ticket_failed = True
+                elif leg['market'] == 'DRAW' and not (hs == as_): ticket_failed = True
+                elif leg['market'] == 'AWAY' and not (as_ > hs): ticket_failed = True
+                if ticket_failed: break
+                
+            if ticket_failed:
+                b['status'] = 'LOST'
+                state['company_balance'] += b['stake'] 
+            else:
+                b['status'] = 'WON'
+                payout = round(b['stake'] * b['total_odds'], 2)
+                users[b['email']]['balance'] += payout
+                state['company_balance'] -= (payout - b['stake']) 
+
+    if current_state['phase'] == 'PLAYING':
+        commentary_line = generate_live_commentary(current_state['italian_fixtures'], current_state['english_fixtures'], current_state['time_into_loop'], current_state['round'])
+        logs_feed = [
+            f"[System] Live Vault Reserve: {state['company_balance']:,} KSH",
+            commentary_line
+        ]
+    else:
+        logs_feed = [
+            f"[System] Live Vault Reserve: {state['company_balance']:,} KSH",
+            "🎙️ [Pre-Match] Market open! Construct your cross-league multibet slip now."
+        ]
+
+    return {
+        'phase': current_state['phase'],
+        'time': current_state['time'],
+        'round': current_state['round'],
+        'season': current_state['season'],
+        'italian_fixtures': current_state['italian_fixtures'],
+        'english_fixtures': current_state['english_fixtures'],
+        'standings_ita': standings_ita,
+        'standings_eng': standings_eng,
+        'logs': logs_feed
     }
-    
-    try:
-        api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-        res = requests.post(api_url, json=payload, headers=headers, timeout=15)
-        if res.status_code == 200:
-            flash(f"STK Push dispatched successfully! Complete verification prompt on phone {phone}.")
-        else:
-            users[session['user']]['balance'] += amount
-            flash("Safaricom Gateway busy. Transaction completed locally instead.")
-    except Exception:
-        users[session['user']]['balance'] += amount
-        flash("Connection timed out. Local simulation credit executed.")
-    return redirect
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
