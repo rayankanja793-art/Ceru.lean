@@ -9,7 +9,6 @@ app.secret_key = 'swiftpitch_high_roller_2026'
 ITALIAN_TEAMS = ["Roma", "Juventus", "Milaan Reds", "Torino", "Fiorentina", "Bologna", "Sassuolo", "Lazio", "Verona", "Atlanta", "Monza", "Cremonese", "Leece", "Udinese", "Spenzia", "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"]
 ENGLISH_TEAMS = ["Manchester blue", "spurs", "A.Villa", "London blues", "Manchester red", "New castle", "Everton", "Bournemouth", "N. forrest", "Brighton", "London reds", "Brentford", "Wolves", "west Ham", "Southampton", "Fulham", "Liverpool", "C.Palace", "Leicester", "Leeds"]
 
-# Shared Platform State Engine
 state = {
     'house_balance': 500000.0,      
     'simulation_running': True,     
@@ -25,12 +24,11 @@ state = {
     'aviator': {'phase': 'BETTING', 'start': time.time(), 'multiplier': 1.0, 'stakes': {}}
 }
 
-# In-Memory Database
+# Master Database with Default Admin Accounts
 users = {
     'admin@swiftpitch.com': {'password': 'adminpassword', 'phone': '0700000000', 'balance': 0.0, 'bonus': 0.0, 'bonus_locked': False, 'role': 'admin', 'bets': []}
 }
 
-# Initialize separated scoreboard structures
 for team in ITALIAN_TEAMS:
     state['standings_italian'][team] = {'played': 0, 'won': 0, 'draw': 0, 'lost': 0, 'points': 0}
 for team in ENGLISH_TEAMS:
@@ -38,14 +36,12 @@ for team in ENGLISH_TEAMS:
 
 # --- 2. MULTI-LEAGUE FIXTURE GENERATOR ---
 def generate_fixtures():
-    # Generate Italian Fixtures
     random.shuffle(ITALIAN_TEAMS)
     state['live_matches_italian'] = [
         {'id': 1, 'league': 'ITALIAN', 'teams': f"{ITALIAN_TEAMS[0]} vs {ITALIAN_TEAMS[1]}", 't1': ITALIAN_TEAMS[0], 't2': ITALIAN_TEAMS[1], 'score': '0-0', 'status': 'LIVE', 'minute': 0}
     ]
     state['pending_matches_italian'] = [{'teams': f"{ITALIAN_TEAMS[2]} vs {ITALIAN_TEAMS[3]}"}]
     
-    # Generate English Fixtures
     random.shuffle(ENGLISH_TEAMS)
     state['live_matches_english'] = [
         {'id': 2, 'league': 'ENGLISH', 'teams': f"{ENGLISH_TEAMS[0]} vs {ENGLISH_TEAMS[1]}", 't1': ENGLISH_TEAMS[0], 't2': ENGLISH_TEAMS[1], 'score': '0-0', 'status': 'LIVE', 'minute': 0}
@@ -59,7 +55,7 @@ def dynamic_engine_loop():
     dt = now - state['last_update']
     state['last_update'] = now
     
-    # Aviator Timing Thread
+    # Aviator Simulation Engine Thread Loops
     av_elapsed = now - state['aviator']['start']
     if state['aviator']['phase'] == 'BETTING' and av_elapsed > 10:
         state['aviator']['phase'] = 'FLYING'
@@ -75,7 +71,6 @@ def dynamic_engine_loop():
     if not state['simulation_running']:
         return
 
-    # Process Both Leagues Simultaneously
     all_live = state['live_matches_italian'] + state['live_matches_english']
     for match in all_live:
         if match['status'] == 'LIVE':
@@ -99,32 +94,27 @@ def finalize_match_statistics(match):
     t1, t2 = match['t1'], match['t2']
     league = match['league']
     
-    # Direct data to correct league table dictionary mapping
     standings = state['standings_italian'] if league == 'ITALIAN' else state['standings_english']
-    
     standings[t1]['played'] += 1
     standings[t2]['played'] += 1
     
     if s1 > s2:
         standings[t1]['won'] += 1; standings[t1]['points'] += 3
         standings[t2]['lost'] += 1
-        winner = t1
     elif s2 > s1:
         standings[t2]['won'] += 1; standings[t2]['points'] += 3
         standings[t1]['lost'] += 1
-        winner = t2
     else:
         standings[t1]['draw'] += 1; standings[t1]['points'] += 1
         standings[t2]['draw'] += 1; standings[t2]['points'] += 1
-        winner = 'DRAW'
         
     log_entry = f"[{league}] Rd {state['current_round']} | {match['teams']} ({match['score']})"
     state['match_logs'].append(log_entry)
 
-# --- 3. SECURE AUTH & TRANSFERS ---
+# --- 3. SECURE AUTH & MANAGEMENT ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'user' in session: return redirect(url_for('index'))
+    if 'user' in session and session['user'] in users: return redirect(url_for('index'))
     msg = None
     if request.method == 'POST':
         email = request.form.get('email')
@@ -167,7 +157,7 @@ def withdraw():
             state['house_balance'] -= amount
     return redirect(url_for('index'))
 
-# --- 4. AVIATOR ENGINE BACKEND ENDPOINTS ---
+# --- 4. AVIATOR TRANSACTIONS ENDPOINTS ---
 @app.route('/api/aviator/bet', methods=['POST'])
 def aviator_bet():
     user = users.get(session.get('user'))
@@ -207,7 +197,10 @@ def toggle_simulation():
 
 @app.route('/')
 def index():
-    if 'user' not in session: return redirect(url_for('login'))
+    # Fixes the 500 internal crash code snippet by safely checking tracking limits
+    if 'user' not in session or session['user'] not in users:
+        session.clear()
+        return redirect(url_for('login'))
     return render_template('index.html', user=users[session['user']])
 
 @app.route('/api/state')
