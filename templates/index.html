@@ -3,223 +3,241 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Virtual Gaming Dashboard</title>
+    <title>SwiftPitch Dashboard</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; 
-            background-color: #0b1118; 
-            color: #f5f7fa; 
-            margin: 0; 
-            padding: 15px; 
-        }
-        .navbar { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            background-color: #121b26; 
-            padding: 12px 20px; 
-            border-radius: 8px; 
-            border-bottom: 3px solid #ffcc00; 
-            margin-bottom: 20px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-        }
-        .logo { 
-            font-size: 22px; 
-            font-weight: bold; 
-            color: #ffcc00; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px;
-        }
-        .main-layout { 
-            display: grid; 
-            grid-template-columns: 1fr 340px; 
-            gap: 20px; 
-        }
-        @media (max-width: 850px) {
-            .main-layout { grid-template-columns: 1fr; }
-        }
-        .card { 
-            background-color: #121b26; 
-            border-radius: 8px; 
-            padding: 18px; 
-            border: 1px solid #1c2a39; 
-            margin-bottom: 15px; 
-        }
+        body { font-family: sans-serif; background-color: #0b1118; color: #f5f7fa; margin: 0; padding: 15px; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #121b26; padding: 12px 20px; border-radius: 8px; border-bottom: 3px solid #ffcc00; margin-bottom: 20px; }
+        .main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+        @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
+        .card { background-color: #121b26; border-radius: 8px; padding: 18px; border: 1px solid #1c2a39; margin-bottom: 15px; }
+        .lane-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
+        .lane-btn { background: #1c2a39; border: 2px solid #1c2a39; color: #a0aec0; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; flex: 1; text-transform: uppercase; }
+        .lane-btn.active-lane { border-color: #ffcc00; color: #ffcc00; background: #121b26; }
+        .lane-btn.aviator-lane-btn { border-color: #ff3333; color: #ff3333; }
         
-        /* NAVIGATION TABS SYSTEMS */
-        .lane-tabs { 
-            display: flex; 
-            gap: 10px; 
-            margin-bottom: 15px; 
-        }
-        .lane-btn { 
-            background: #1c2a39; 
-            border: 2px solid #1c2a39; 
-            color: #a0aec0; 
-            padding: 12px 20px; 
-            font-weight: bold; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            flex: 1; 
-            text-transform: uppercase; 
-            font-size: 13px;
-            transition: all 0.2s ease;
-        }
-        .lane-btn.active-lane { 
-            border-color: #ffcc00; 
-            color: #ffcc00; 
-            background: #121b26; 
-        }
-        .lane-btn.aviator-lane-btn { 
-            border-color: #ff3333; 
-            color: #ff3333; 
-        }
-        .lane-btn.aviator-lane-btn.active-lane { 
-            background: #1a0f11; 
-            border-color: #ff3333; 
-            color: #ff3333; 
-            box-shadow: 0 0 10px rgba(255, 51, 51, 0.25); 
-        }
-
-        /* LUCKY AVIATOR MULTIPLIER CORE COMPONENTS */
-        #aviator-arena { 
-            display: block; /* Default to showing the Arena first */
-            background: #121b26; 
-            border: 2px solid #ff3333; 
-            border-radius: 8px; 
-            padding: 20px; 
-            text-align: center; 
-            margin-bottom: 25px; 
-            box-shadow: 0 4px 20px rgba(255, 51, 51, 0.1);
-        }
-        .aviator-canvas-wrapper { 
-            position: relative; 
-            background: #070b10; 
-            border-radius: 6px; 
-            overflow: hidden; 
-            margin-bottom: 15px; 
-            border: 1px solid #1c2a39; 
-        }
-        #aviatorCanvas { 
-            width: 100%; 
-            height: 260px; 
-            display: block; 
-        }
-        .live-multiplier-counter { 
-            position: absolute; 
-            top: 45%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            font-size: 52px; 
-            font-weight: 900; 
-            color: #ffffff; 
-            text-shadow: 0 4px 15px rgba(0,0,0,0.9); 
-            font-family: 'Courier New', monospace; 
-            letter-spacing: 1px;
-        }
-        .aviator-controls { 
-            display: flex; 
-            justify-content: center; 
-            gap: 15px; 
-            background: #0b1118; 
-            padding: 15px; 
-            border-radius: 6px; 
-            border: 1px solid #1c2a39; 
-        }
-        .aviator-input { 
-            background: #121b26; 
-            border: 1px solid #1c2a39; 
-            color: white; 
-            padding: 12px; 
-            font-size: 16px; 
-            border-radius: 4px; 
-            font-weight: bold; 
-            width: 120px; 
-            text-align: center; 
-        }
-        .aviator-btn { 
-            background: #ff3333; 
-            color: white; 
-            font-size: 16px; 
-            font-weight: bold; 
-            padding: 12px 40px; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            text-transform: uppercase; 
-            min-width: 220px; 
-            transition: background 0.1s ease;
-        }
-        .aviator-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* SPORTSBOOK LEAGUE INTERFACES */
-        #sportsbook-zone {
-            display: none; /* Hidden by default until selected */
-        }
-        .fix-row { 
-            display: grid; 
-            grid-template-columns: 1fr 120px; 
-            align-items: center; 
-            padding: 12px; 
-            border-bottom: 1px solid #1c2a39; 
-        }
-        .score-box {
-            background: #070b10;
-            padding: 6px;
-            border-radius: 4px;
-            text-align: center;
-            font-weight: bold;
-            color: #00ff66;
-            letter-spacing: 2px;
-            border: 1px solid #1c2a39;
-        }
-        .btn-action { 
-            width: 100%; 
-            background: #00ff66; 
-            color: #000; 
-            padding: 12px; 
-            font-weight: bold; 
-            border: none; 
-            border-radius: 5px; 
-            cursor: pointer; 
-            text-transform: uppercase; 
-            font-size: 13px;
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-size: 13px; 
-        }
-        th, td { 
-            padding: 10px 8px; 
-            border-bottom: 1px solid #1c2a39; 
-            text-align: left;
-        }
-        th {
-            color: #a0aec0;
-            font-weight: 600;
-        }
-        .loading-text {
-            color: #a0aec0;
-            font-style: italic;
-            padding: 15px;
-            text-align: center;
-        }
+        #aviator-arena { background: #121b26; border: 2px solid #ff3333; border-radius: 8px; padding: 20px; text-align: center; }
+        .canvas-wrapper { position: relative; background: #070b10; border-radius: 6px; margin-bottom: 15px; }
+        #aviatorCanvas { width: 100%; height: 260px; display: block; }
+        .mult-text { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 55px; font-weight: 900; color: white; font-family: monospace; }
+        
+        .aviator-btn { background: #ff3333; color: white; font-size: 16px; font-weight: bold; padding: 12px; border: none; border-radius: 4px; cursor: pointer; width: 100%; text-transform: uppercase; }
+        .fix-row { display: grid; grid-template-columns: 1fr 100px; align-items: center; padding: 10px; border-bottom: 1px solid #1c2a39; }
+        .score-box { background: #070b10; padding: 5px; border-radius: 4px; text-align: center; font-weight: bold; color: #00ff66; border: 1px solid #1c2a39; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; border-bottom: 1px solid #1c2a39; text-align: left; }
+        
+        .admin-box { background: #1a160f; border: 2px dashed #ffcc00; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
     <div class="navbar">
-        <div class="logo">⚽ SWIFTPITCH</div>
-        <div style="font-weight: bold; color:#a0aec0; font-size: 15px;">
-            Wallet Balance: <span style="color: #00ff66;" id="live-wallet">{{ "{:,.2f}".format(user.balance) }} KSH</span>
-            <a href="/logout" style="margin-left: 20px; color: #ffcc00; text-decoration: none; border-left: 1px solid #1c2a39; padding-left: 15px;">Logout</a>
+        <div style="font-size: 22px; font-weight: bold; color: #ffcc00;">⚽ SWIFTPITCH</div>
+        <div style="font-weight: bold;">
+            Wallet: <span style="color: #00ff66;" id="live-wallet">0.00 KSH</span>
+            <a href="/logout" style="margin-left: 15px; color: #ffcc00; text-decoration: none;">Logout</a>
         </div>
     </div>
 
+    {% if user.is_admin %}
+    <div class="admin-box">
+        <h3 style="margin-top:0; color:#ffcc00;">🛠️ Admin Control Panel</h3>
+        <p style="font-size:12px; color:#a0aec0;">Set simulation values explicitly. Regular players cannot see this interface.</p>
+        <div style="display:flex; gap:10px; flex-wrap: wrap;">
+            <select id="adm-league" style="padding:8px; background:#0b1118; color:white; border:1px solid #1c2a39;">
+                <option value="ITALIAN">🇮🇹 Italian League</option>
+                <option value="ENGLISH">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English League</option>
+            </select>
+            <input type="text" id="adm-team" placeholder="Home Team Name" style="padding:8px; background:#0b1118; color:white; border:1px solid #1c2a39;">
+            <input type="number" id="adm-hscore" placeholder="Home Score" style="width:90px; padding:8px; background:#0b1118; color:white; border:1px solid #1c2a39;">
+            <input type="number" id="adm-ascore" placeholder="Away Score" style="width:90px; padding:8px; background:#0b1118; color:white; border:1px solid #1c2a39;">
+            <button onclick="submitAdminOverride()" style="background:#ffcc00; color:black; font-weight:bold; border:none; padding:8px 15px; cursor:pointer; border-radius:4px;">Force Result</button>
+            <button onclick="clearAdminOverrides()" style="background:#ff3333; color:white; font-weight:bold; border:none; padding:8px 15px; cursor:pointer; border-radius:4px;">Reset Engines</button>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="lane-tabs">
         <button class="lane-btn aviator-lane-btn active-lane" id="tab-av" onclick="switchLane('AVIATOR')">✈️ Lucky Aviator Arena</button>
-        <button class="lane-btn
+        <button class="lane-btn" id="tab-ita" onclick="switchLane('ITALIAN')">🇮🇹 Italian Serie A Lane</button>
+        <button class="lane-btn" id="tab-eng" onclick="switchLane('ENGLISH')">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier Lane</button>
+    </div>
+
+    <div class="main-layout">
+        <div>
+            <div id="aviator-arena">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <h3 style="margin:0; color:#ff3333;">✈️ LUCKY AVIATOR</h3>
+                    <div id="aviator-status" style="color:#ffcc00; font-weight:bold;">Loading...</div>
+                </div>
+                <div class="canvas-wrapper">
+                    <canvas id="aviatorCanvas" width="750" height="260"></canvas>
+                    <div class="mult-text" id="mult-counter">1.00x</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: 15px; background: #0b1118; padding: 12px; border-radius: 6px;">
+                    <input type="number" id="aviator-stake" value="50" min="10" style="background:#121b26; border:1px solid #1c2a39; color:white; font-size:18px; text-align:center; border-radius:4px; font-weight:bold;">
+                    <button id="aviator-btn" class="aviator-btn" onclick="handleAviatorAction()">Place Stake</button>
+                </div>
+            </div>
+
+            <div id="sportsbook-zone" style="display:none;">
+                <div class="card">
+                    <h3 style="margin-top:0;" id="lane-label">Fixtures</h3>
+                    <div id="fixtures-box"></div>
+                </div>
+                <div class="card">
+                    <h3 style="margin-top:0;" id="table-label">Standings</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Pos</th><th>Squad Club</th><th>MP</th><th>PTS</th></tr>
+                        </thead>
+                        <tbody id="standings-box"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="card" style="border-color:#00ff66;">
+                <h4 style="margin-top:0; color:#00ff66;">💳 Deposit Funds (Min: 10 KSH)</h4>
+                <form action="/deposit" method="POST">
+                    <input type="number" name="amount" min="10" placeholder="Amount (KSH)" required style="width:88%; padding:10px; background:#0b1118; border:1px solid #1c2a39; color:white; margin-bottom:10px; border-radius:4px;">
+                    <button type="submit" style="width:100%; background:#00ff66; border:none; padding:10px; color:black; font-weight:bold; border-radius:4px; cursor:pointer;">Deposit</button>
+                </form>
+            </div>
+
+            <div class="card" style="border-color:#ffcc00;">
+                <h4 style="margin-top:0; color:#ffcc00;">💰 Withdraw Funds (Min: 100 KSH)</h4>
+                <form action="/withdraw" method="POST">
+                    <input type="number" name="amount" min="100" placeholder="Amount (KSH)" required style="width:88%; padding:10px; background:#0b1118; border:1px solid #1c2a39; color:white; margin-bottom:10px; border-radius:4px;">
+                    <button type="submit" style="width:100%; background:#ffcc00; border:none; padding:10px; color:black; font-weight:bold; border-radius:4px; cursor:pointer;">Withdraw</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLane = "AVIATOR";
+        let activeRoundId = 0;
+        const canvas = document.getElementById('aviatorCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function switchLane(lane) {
+            currentLane = lane;
+            document.getElementById('tab-av').classList.toggle('active-lane', lane === 'AVIATOR');
+            document.getElementById('tab-ita').classList.toggle('active-lane', lane === 'ITALIAN');
+            document.getElementById('tab-eng').classList.toggle('active-lane', lane === 'ENGLISH');
+
+            if(lane === 'AVIATOR') {
+                document.getElementById('aviator-arena').style.display = 'block';
+                document.getElementById('sportsbook-zone').style.display = 'none';
+            } else {
+                document.getElementById('aviator-arena').style.display = 'none';
+                document.getElementById('sportsbook-zone').style.display = 'block';
+                document.getElementById('lane-label').innerText = lane === 'ITALIAN' ? '🇮🇹 Italian Live Matches' : '🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Live Matches';
+                document.getElementById('table-label').innerText = lane === 'ITALIAN' ? '🇮🇹 Italian Standings' : '🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Standings';
+                refreshFootball();
+            }
+        }
+
+        function drawGraph(phase, mult) {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.strokeStyle = '#16222f';
+            for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+            for(let j=0; j<canvas.height; j+=50) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(canvas.width,j); ctx.stroke(); }
+            
+            let pX = 50, pY = 220;
+            if(phase === 'FLYING') {
+                pX = Math.min(canvas.width - 40, 50 + (mult - 1) * 70);
+                pY = Math.max(30, 220 - (mult - 1) * 35);
+                ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.moveTo(50,220); ctx.quadraticCurveTo(pX/2+25, 220, pX, pY); ctx.stroke();
+            }
+            ctx.fillStyle = '#ff3333'; ctx.beginPath(); ctx.arc(pX, pY, 8, 0, 2*Math.PI); ctx.fill();
+        }
+
+        function handleAviatorAction() {
+            const btn = document.getElementById('aviator-btn');
+            const amt = document.getElementById('aviator-stake').value;
+            if(btn.innerText === "PLACE STAKE") {
+                fetch('/api/aviator/bet', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount:parseFloat(amt)}) })
+                .then(r=>r.json()).then(d => { if(d.success) btn.innerText = "WAITING..."; else alert(d.message); });
+            } else if(btn.innerText.includes("CASH OUT")) {
+                fetch('/api/aviator/cashout', { method:'POST', headers:{'Content-Type':'application/json'} })
+                .then(r=>r.json()).then(d => { if(d.success) alert(`Cashed out at ${d.multiplier}x!`); else alert(d.message); });
+            }
+        }
+
+        setInterval(() => {
+            fetch('/api/aviator/state').then(r=>r.json()).then(d => {
+                document.getElementById('live-wallet').innerText = d.user_wallet.toFixed(2) + ' KSH';
+                activeRoundId = d.round_id;
+                const btn = document.getElementById('aviator-btn');
+
+                if(d.phase === 'BETTING') {
+                    document.getElementById('aviator-status').innerText = `Next Flight: ${d.time_left}s`;
+                    document.getElementById('mult-counter').innerText = "BOARDING";
+                    document.getElementById('mult-counter').style.color = '#ffcc00';
+                    if(!d.has_bet) { btn.innerText = "PLACE STAKE"; btn.disabled = false; btn.style.background = '#ff3333'; }
+                } else if(d.phase === 'FLYING') {
+                    document.getElementById('aviator-status').innerText = "LIVE FLIGHT IN AIR";
+                    document.getElementById('mult-counter').innerText = d.current_multiplier.toFixed(2) + 'x';
+                    document.getElementById('mult-counter').style.color = 'white';
+                    if(d.has_bet) {
+                        btn.innerText = `CASH OUT (${(d.bet_amount * d.current_multiplier).toFixed(2)} KSH)`;
+                        btn.style.background = '#ffcc00'; btn.style.color = 'black';
+                    } else if(btn.innerText !== "PLACE STAKE") { btn.innerText = "CLOSED"; btn.disabled = true; }
+                } else {
+                    document.getElementById('aviator-status').innerText = "CRASHED";
+                    document.getElementById('mult-counter').innerText = "FLEW AWAY";
+                    document.getElementById('mult-counter').style.color = '#ff3333';
+                    btn.innerText = "CRASHED"; btn.disabled = true;
+                }
+                drawGraph(d.phase, d.current_multiplier);
+            });
+        }, 200);
+
+        function refreshFootball() {
+            if(currentLane === "AVIATOR") return;
+            fetch('/api/state').then(r=>r.json()).then(d => {
+                let fixtures = currentLane === 'ITALIAN' ? d.italian_fixtures : d.english_fixtures;
+                let standings = currentLane === 'ITALIAN' ? d.standings_ita : d.standings_eng;
+                
+                let fixHtml = '';
+                fixtures.forEach(f => {
+                    fixHtml += `<div class="fix-row"><div><strong>${f.home}</strong> vs <strong>${f.away}</strong></div><div class="score-box">${f.home_score} - ${f.away_score}</div></div>`;
+                });
+                document.getElementById('fixtures-box').innerHTML = fixHtml;
+
+                let standHtml = '';
+                standings.forEach((t, i) => {
+                    standHtml += `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.mp}</td><td style="color:#00ff66;font-weight:bold;">${t.pts}</td></tr>`;
+                });
+                document.getElementById('standings-box').innerHTML = standHtml;
+            });
+        }
+        setInterval(refreshFootball, 3000);
+
+        function submitAdminOverride() {
+            const league = document.getElementById('adm-league').value;
+            const team = document.getElementById('adm-team').value;
+            const hscore = document.getElementById('adm-hscore').value;
+            const ascore = document.getElementById('adm-ascore').value;
+            
+            fetch('/admin/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: 'force_result', league: league, home_team: team, home_score: hscore, away_score: ascore })
+            }).then(r=>r.json()).then(d => alert(d.message));
+        }
+
+        function clearAdminOverrides() {
+            fetch('/admin/control', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: 'clear_overrides' })
+            }).then(r=>r.json()).then(d => alert(d.message));
+        }
+    </script>
+</body>
+</html>
