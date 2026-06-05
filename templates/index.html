@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Live Betting Simulator</title>
+    <title>SwiftPitch - Multi League Simulator</title>
     <style>
         body { background-color: #0b1118; color: #ffffff; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; }
         .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #121b26; padding: 15px 25px; border-radius: 10px; border: 1px solid #1c2a39; margin-bottom: 25px; }
@@ -11,64 +11,44 @@
         .wallet-display { font-size: 16px; color: #88a0b0; display: flex; gap: 20px; }
         .balance-highlight { color: #00ff66; font-weight: bold; }
         .house-highlight { color: #ffcc00; font-weight: bold; }
-        
         .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr 350px; gap: 20px; }
         @media (max-width: 1200px) { .dashboard-grid { grid-template-columns: 1fr; } }
-        
         .card { background-color: #121b26; border-radius: 10px; padding: 20px; border: 1px solid #1c2a39; margin-bottom: 20px; }
-        h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 10px; color: #88a0b0; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
-        
-        /* Aviator Special Styles */
+        h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 10px; color: #88a0b0; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
         .aviator-container { text-align: center; border: 2px solid #ffcc00; background: linear-gradient(180deg, #121b26 0%, #1a1520 100%); }
         .multiplier-text { font-size: 54px; font-weight: 900; color: #ffcc00; margin: 15px 0; font-family: monospace; }
         .phase-badge { background-color: rgba(255, 204, 0, 0.1); color: #ffcc00; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-        
-        /* Interactive Elements */
-        input[type="number"], input[type="text"], select { width: 100%; padding: 12px; background-color: #0b1118; border: 1px solid #1c2a39; border-radius: 6px; color: white; margin-bottom: 12px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; transition: transform 0.1s; }
-        button:active { transform: scale(0.98); }
+        input[type="number"], select { width: 100%; padding: 12px; background-color: #0b1118; border: 1px solid #1c2a39; border-radius: 6px; color: white; margin-bottom: 12px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; }
         .btn-success { background-color: #00ff66; color: #0b1118; }
         .btn-danger { background-color: #ff3333; color: white; }
         .btn-warn { background-color: #ff9900; color: white; }
         .btn-blue { background-color: #00ccff; color: #0b1118; }
-        
-        /* Soccer Engine Rows */
         .match-row { display: flex; justify-content: space-between; align-items: center; background-color: #0b1118; padding: 12px; border-radius: 6px; margin-bottom: 8px; border-left: 4px solid #00ff66; }
-        .match-pending { border-left-color: #88a0b0; opacity: 0.7; }
+        .league-tag { font-size: 10px; background: #1c2a39; padding: 2px 6px; border-radius: 4px; color: #00ccff; font-weight: bold; }
         .score-box { background-color: #1c2a39; padding: 4px 10px; border-radius: 4px; font-weight: bold; color: #00ff66; font-family: monospace; }
-        
-        /* Standings Table */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #1c2a39; }
+        th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #1c2a39; }
         th { color: #88a0b0; }
-        
-        /* Admin Command Deck Box */
         .admin-deck { border: 2px dashed #ff3333; background-color: rgba(255, 51, 51, 0.05); display: none; }
-        
-        /* Bet Slip Badges */
-        .slip-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px; background: #0b1118; margin-bottom: 5px; border-radius: 4px; }
-        .status-won { color: #00ff66; font-weight: bold; }
-        .status-lost { color: #ff3333; font-weight: bold; }
-        .status-open { color: #00ccff; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="navbar">
-    <div class="logo">SWIFTPITCH</div>
+    <div class="logo">SWIFTPITCH MULTI-LEAGUE</div>
     <div class="wallet-display">
-        <div>House Balance: <span class="house-highlight" id="house-balance">0.00</span> KSH</div>
-        <div>My Balance: <span class="balance-highlight" id="user-balance">0.00</span> KSH <span id="bonus-wrapper"></span></div>
+        <div>Vault: <span class="house-highlight" id="house-balance">0.00</span> KSH</div>
+        <div>Wallet: <span class="balance-highlight" id="user-balance">0.00</span> KSH <span id="bonus-wrapper"></span></div>
         <div><a href="/logout" style="color: #ff3333; text-decoration: none; font-weight: bold;">Logout</a></div>
     </div>
 </div>
 
 <div class="card admin-deck" id="admin-panel">
-    <h3 style="color: #ff3333;">🛡️ Admin Command Deck</h3>
-    <p style="margin: 0 0 15px 0; font-size: 13px; color: #88a0b0;">You have administrative control privileges over the core match execution thread engine.</p>
+    <h3 style="color: #ff3333;">🛡️ Admin Engine Controls</h3>
     <div style="display: flex; gap: 15px;">
-        <button class="btn-success" onclick="setSimulationState(true)">START SIMULATION</button>
-        <button class="btn-danger" onclick="setSimulationState(false)">STOP SIMULATION</button>
+        <button class="btn-success" onclick="setSimulationState(true)">START ENGINE</button>
+        <button class="btn-danger" onclick="setSimulationState(false)">STOP ENGINE</button>
     </div>
 </div>
 
@@ -79,171 +59,141 @@
             <span class="phase-badge" id="aviator-phase">BETTING PHASE</span>
             <div class="multiplier-text" id="aviator-mult">1.00x</div>
             <div style="max-width: 280px; margin: 0 auto;">
-                <input type="number" id="aviator-stake" value="100" min="10" placeholder="Stake (KSH)">
+                <input type="number" id="aviator-stake" value="50" min="10">
                 <button id="aviator-bet-btn" class="btn-success" onclick="placeAviatorBet()">PLACE AVIATOR BET</button>
-                <button id="aviator-cashout-btn" class="btn-warn" onclick="cashoutAviatorBet()" style="display: none;">CASH OUT</button>
+                <button id="aviator-cashout-btn" class="btn-warn" onclick="cashoutAviatorBet()" style="display: none;">CASH OUT NOW</button>
             </div>
-            <p style="font-size: 11px; color: #88a0b0; margin-top: 15px;">⚠️ System payout threshold safety cap: 300,000 KSH maximum win rate rules apply.</p>
         </div>
 
         <div class="card">
-            <h3>⚽ Live Simulation Matches</h3>
-            <div id="live-matches-container">Scanning system frequencies...</div>
+            <h3>⚽ Live Active Fixtures</h3>
+            <div id="live-matches-container">Connecting to server core threads...</div>
             
-            <h3 style="margin-top: 25px;">⏳ Pending Next Round Queue</h3>
-            <div id="pending-matches-container">Awaiting match structural pairings...</div>
+            <h3 style="margin-top: 25px;">⏳ Coming Up Next Round</h3>
+            <div id="pending-matches-container">Generating fixture lineups...</div>
         </div>
     </div>
 
     <div>
         <div class="card">
-            <h3>📈 Live League Table (Standings)</h3>
-            <div style="max-height: 400px; overflow-y: auto;">
+            <h3 style="color: #00ccff;">🇮🇹 Italian Serie A Table</h3>
+            <div style="max-height: 230px; overflow-y: auto;">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Team</th>
-                            <th>P</th>
-                            <th>W</th>
-                            <th>D</th>
-                            <th>L</th>
-                            <th>PTS</th>
-                        </tr>
-                    </thead>
-                    <tbody id="standings-body">
-                        </tbody>
+                    <thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead>
+                    <tbody id="italian-table-body"></tbody>
                 </table>
             </div>
         </div>
 
         <div class="card">
-            <h3>📜 Match Log Terminal</h3>
-            <div id="match-logs" style="max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #88a0b0; line-height: 1.6;">
-                System initialized. Awaiting completion logs...
+            <h3 style="color: #ffcc00;">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier League Table</h3>
+            <div style="max-height: 230px; overflow-y: auto;">
+                <table>
+                    <thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead>
+                    <tbody id="english-table-body"></tbody>
+                </table>
             </div>
+        </div>
+
+        <div class="card">
+            <h3>📜 Historic Results Log</h3>
+            <div id="match-logs" style="max-height: 100px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #88a0b0;"></div>
         </div>
     </div>
 
     <div>
         <div class="card">
-            <h3>💳 Secure Banking Desk</h3>
-            
-            <form action="/deposit" method="POST" style="margin-bottom: 20px;">
-                <label style="font-size: 12px; color: #88a0b0; display: block; margin-bottom: 5px;">Deposit Funds (Min 10 Bob)</label>
-                <input type="number" name="amount" min="10" placeholder="Amount (KSH)" required>
-                <button type="submit" class="btn-blue">DEPOSIT BOARDS</button>
+            <h3>💳 Transaction Window</h3>
+            <form action="/deposit" method="POST" style="margin-bottom: 15px;">
+                <input type="number" name="amount" min="10" placeholder="Deposit Amount (Min 10)" required>
+                <button type="submit" class="btn-blue">DEPOSIT SYSTEM</button>
             </form>
-
             <form action="/withdraw" method="POST">
-                <label style="font-size: 12px; color: #88a0b0; display: block; margin-bottom: 5px;">Withdraw Funds (Min 100 KSH)</label>
-                <input type="number" name="amount" min="100" placeholder="Amount (KSH)" required>
-                <button type="submit" class="btn-warn">WITHDRAWAL SYSTEM</button>
+                <input type="number" name="amount" min="100" placeholder="Withdrawal Amount (Min 100)" required>
+                <button type="submit" class="btn-warn">WITHDRAW FUNDS</button>
             </form>
-        </div>
-
-        <div class="card">
-            <h3>📝 Quick Multi-Bet Configuration</h3>
-            <select id="soccer-pick">
-                <option value="">Select Target Match Outcome...</option>
-            </select>
-            <input type="number" id="soccer-stake" placeholder="Stake Amount">
-            <button class="btn-success" style="background-color: #ffcc00; color: black;">PLACE FOOTBALL BET</button>
-        </div>
-
-        <div class="card">
-            <h3>📋 My Account Open & Settled Bets</h3>
-            <div id="user-slips-container" style="max-height: 250px; overflow-y: auto;">
-                <p style="font-size: 13px; color:#88a0b0; margin:0;">No tickets found on this account profile ledger yet.</p>
-            </div>
         </div>
     </div>
-
 </div>
 
 <script>
     let localAviatorBetActive = false;
 
-    // Core state loop execution stream running 2x every single second
     setInterval(() => {
         fetch('/api/state')
         .then(res => res.json())
         .then(data => {
-            // Update Banking balances strings
             document.getElementById('user-balance').innerText = data.user_balance.toFixed(2);
             document.getElementById('house-balance').innerText = data.house_balance.toFixed(2);
             
             if (data.user_bonus_locked) {
-                document.getElementById('bonus-wrapper').innerHTML = `(<span style="color:#ff3333; font-size:12px;">Locked Bonus: ${data.user_bonus} KSH</span>)`;
+                document.getElementById('bonus-wrapper').innerHTML = `(<span style="color:#ff3333; font-size:12px;">Locked: ${data.user_bonus} KSH</span>)`;
             } else {
                 document.getElementById('bonus-wrapper').innerHTML = '';
             }
 
-            // Administrative privileges evaluation gateway
-            if (data.user_role === 'admin') {
-                document.getElementById('admin-panel').style.display = 'block';
-            }
+            if (data.user_role === 'admin') document.getElementById('admin-panel').style.display = 'block';
 
-            // Process Aviator Multiplier Graphics
+            // Aviator Frontend Machine State
             const av = data.aviator;
             document.getElementById('aviator-mult').innerText = av.multiplier.toFixed(2) + 'x';
             document.getElementById('aviator-phase').innerText = av.phase + ' PHASE';
 
             if (av.phase === 'BETTING') {
-                localAviatorBetActive = false; 
+                localAviatorBetActive = false;
                 document.getElementById('aviator-bet-btn').style.display = 'block';
+                document.getElementById('aviator-bet-btn').disabled = false;
                 document.getElementById('aviator-cashout-btn').style.display = 'none';
             } else if (av.phase === 'FLYING' && localAviatorBetActive) {
                 document.getElementById('aviator-bet-btn').style.display = 'none';
                 document.getElementById('aviator-cashout-btn').style.display = 'block';
             } else {
-                document.getElementById('aviator-bet-btn').style.display = 'block';
-                document.getElementById('aviator-bet-btn').disabled = true;
-                document.getElementById('aviator-cashout-btn').style.display = 'none';
+                if(!localAviatorBetActive) {
+                    document.getElementById('aviator-bet-btn').style.display = 'block';
+                    document.getElementById('aviator-bet-btn').disabled = true;
+                    document.getElementById('aviator-cashout-btn').style.display = 'none';
+                }
             }
 
-            // Process Soccer Live Engines Display
+            // Render Matches Display Splitter
             let liveHtml = '';
-            let betDropdownOptions = '<option value="">Select Target Match Outcome...</option>';
             data.live_matches.forEach(m => {
                 liveHtml += `
-                    <div class="match-row">
-                        <div><strong>${m.teams}</strong><br><span style="font-size:11px; color:#88a0b0;">Continuous League Match</span></div>
-                        <div style="text-align:right;"><span class="score-box">${m.score}</span><br><span style="font-size:11px; color:#00ff66;">Min: ${m.minute}'</span></div>
+                    <div class="match-row" style="border-left-color: ${m.league === 'ITALIAN' ? '#00ccff' : '#ffcc00'}">
+                        <div><span class="league-tag">${m.league}</span><br><strong>${m.teams}</strong></div>
+                        <div style="text-align:right;"><span class="score-box">${m.score}</span><br><span style="color:#00ff66; font-size:11px;">Min: ${m.minute}'</span></div>
                     </div>`;
-                if(m.status === 'LIVE') {
-                    betDropdownOptions += `<option value="${m.id}_t1">${m.t1} to Win (2.10x)</option>`;
-                    betDropdownOptions += `<option value="${m.id}_t2">${m.t2} to Win (1.95x)</option>`;
-                    betDropdownOptions += `<option value="${m.id}_draw">Draw Match (3.40x)</option>`;
-                }
             });
-            document.getElementById('live-matches-container').innerHTML = liveHtml || 'No matches processing in current pipeline runtime indices.';
-            document.getElementById('soccer-pick').innerHTML = betDropdownOptions;
+            document.getElementById('live-matches-container').innerHTML = liveHtml;
 
-            // Process Pending Matches Queue Display
             let pendHtml = '';
             data.pending_matches.forEach(m => {
-                pendHtml += `<div class="match-row match-pending"><div>${m.teams}</div><div style="font-size:12px; color:#88a0b0;">NEXT ROUND</div></div>`;
+                pendHtml += `<div class="match-row" style="opacity:0.6;"><div><strong>${m.teams}</strong></div></div>`;
             });
-            document.getElementById('pending-matches-container').innerHTML = pendHtml || 'Queue completely cleared.';
+            document.getElementById('pending-matches-container').innerHTML = pendHtml;
 
-            // Render League Standings Rankings
-            let tableHtml = '';
-            // Convert to array and sort by points descending
-            let teamArr = Object.keys(data.standings).map(name => ({name, ...data.standings[name]}));
-            teamArr.sort((a,b) => b.points - a.points);
-            teamArr.forEach(t => {
-                tableHtml += `<tr><td><strong>${t.name}</strong></td><td>${t.played}</td><td>${t.won}</td><td>${t.draw}</td><td>${t.lost}</td><td style="color:#00ff66; font-weight:bold;">${t.points}</td></tr>`;
+            // Sort and Render Italian Standings Table
+            let itArr = Object.keys(data.standings_italian).map(name => ({name, ...data.standings_italian[name]}));
+            itArr.sort((a,b) => b.points - a.points);
+            let itHtml = '';
+            itArr.forEach(t => {
+                itHtml += `<tr><td><strong>${t.name}</strong></td><td>${t.played}</td><td>${t.won}</td><td>${t.draw}</td><td>${t.lost}</td><td style="color:#00ccff;font-weight:bold;">${t.points}</td></tr>`;
             });
-            document.getElementById('standings-body').innerHTML = tableHtml;
+            document.getElementById('italian-table-body').innerHTML = itHtml;
 
-            // Update System Match Logs
-            if(data.match_logs.length > 0) {
-                document.getElementById('match-logs').innerHTML = data.match_logs.reverse().join('<br>');
-            }
+            // Sort and Render English Standings Table
+            let enArr = Object.keys(data.standings_english).map(name => ({name, ...data.standings_english[name]}));
+            enArr.sort((a,b) => b.points - a.points);
+            let enHtml = '';
+            enArr.forEach(t => {
+                enHtml += `<tr><td><strong>${t.name}</strong></td><td>${t.played}</td><td>${t.won}</td><td>${t.draw}</td><td>${t.lost}</td><td style="color:#ffcc00;font-weight:bold;">${t.points}</td></tr>`;
+            });
+            document.getElementById('english-table-body').innerHTML = enHtml;
+
+            if(data.match_logs.length > 0) document.getElementById('match-logs').innerHTML = data.match_logs.reverse().join('<br>');
         });
     }, 500);
 
-    // Aviator Core Transaction Hooks
     function placeAviatorBet() {
         const stake = document.getElementById('aviator-stake').value;
         fetch('/api/aviator/bet', {
@@ -255,9 +205,9 @@
         .then(d => {
             if (d.success) {
                 localAviatorBetActive = true;
-                alert("Aviator bet configuration placed into active processing loop!");
+                alert("Aviator bet placed successfully!");
             } else {
-                alert("Transaction rejected: Insufficient profile balance metrics or betting phase closed.");
+                alert("Failed to place bet. Make sure the balance is sufficient and betting window is open.");
             }
         });
     }
@@ -268,24 +218,20 @@
         .then(d => {
             if (d.success) {
                 localAviatorBetActive = false;
-                alert("Successful Flight Extraction! Earnings added to wallet: " + d.winnings.toFixed(2) + " KSH");
+                alert("Cashed out successfully! Winnings added to your balance.");
             } else {
-                alert("Extraction index failure. Check link stability status parameters.");
+                alert("Cashout failed.");
             }
         });
     }
 
-    // Administrative Command Hook
     function setSimulationState(runFlag) {
         fetch('/admin/toggle', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ run: runFlag })
         })
-        .then(res => res.json())
-        .then(d => {
-            if (d.success) alert("Simulation administrative speed status updated globally!");
-        });
+        .then(res => res.json());
     }
 </script>
 </body>
