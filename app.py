@@ -204,22 +204,78 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        action = request.form.get('auth_action')
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
-        if email in users and users[email]['password'] == password:
-            session['user'] = email
-            return redirect(url_for('index'))
-        flash("Invalid email or password.")
+        
+        if action == 'signin':
+            if email in users and users[email]['password'] == password:
+                session['user'] = email
+                return redirect(url_for('index'))
+            flash("Invalid email or password.")
+            
+        elif action == 'signup':
+            if email in users:
+                flash("An account with that email already exists.")
+            elif len(email) < 5 or len(password) < 4:
+                flash("Please enter a valid email and password (min 4 characters).")
+            else:
+                # Add new player with 1,000 KSH registration starting money
+                users[email] = {
+                    'password': password,
+                    'balance': 1000.0,
+                    'bonus_unlocked': True,
+                    'is_admin': False
+                }
+                session['user'] = email
+                return redirect(url_for('index'))
+                
     return '''
-    <body style="background:#0b1118; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0;">
-        <div style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center;">
-            <h2 style="color:#ffcc00; margin-bottom:20px;">⚽ SWIFTPITCH LOGIN</h2>
+    <body style="background:#0b1118; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; flex-direction:column;">
+        
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for msg in messages %}
+              <div style="background:#ff3333; color:white; padding:10px 20px; border-radius:4px; margin-bottom:15px; font-weight:bold; font-size:14px; box-shadow:0 2px 10px rgba(0,0,0,0.5); border:1px solid #ff6666;">
+                 ⚠️ {{ msg }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div id="signin-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.35);">
+            <h2 style="color:#ffcc00; margin-bottom:20px; font-size:22px; letter-spacing:1px;">⚽ SWIFTPITCH LOGIN</h2>
             <form method="POST">
-                <input type="text" name="email" placeholder="Email Address" required style="width:90%; padding:10px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
-                <input type="password" name="password" placeholder="Password" required style="width:90%; padding:10px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
-                <button type="submit" style="width:97%; background:#00ff66; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase;">Sign In</button>
+                <input type="hidden" name="auth_action" value="signin">
+                <input type="text" name="email" placeholder="Email Address" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px; font-size:14px;"><br>
+                <input type="password" name="password" placeholder="Password" required style="width:90%; padding:11px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px; font-size:14px;"><br>
+                <button type="submit" style="width:97%; background:#00ff66; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase; font-size:14px; letter-spacing:0.5px;">Sign In</button>
             </form>
+            <p style="margin-top:20px; font-size:13px; color:#a0aec0;">
+                New player? <a href="#" onclick="toggleCards(true)" style="color:#00ff66; text-decoration:none; font-weight:bold;">Create Account Here →</a>
+            </p>
         </div>
+
+        <div id="signup-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center; display:none; box-shadow: 0 4px 15px rgba(0,0,0,0.35);">
+            <h2 style="color:#00ff66; margin-bottom:20px; font-size:22px; letter-spacing:1px;">📝 PLAYER REGISTRATION</h2>
+            <p style="color:#a0aec0; font-size:12px; margin-top:-10px; margin-bottom:15px;">Get a free 1,000 KSH starter bonus instantly upon signing up!</p>
+            <form method="POST">
+                <input type="hidden" name="auth_action" value="signup">
+                <input type="email" name="email" placeholder="Enter Email Address" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px; font-size:14px;"><br>
+                <input type="password" name="password" placeholder="Choose Strong Password" required style="width:90%; padding:11px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px; font-size:14px;"><br>
+                <button type="submit" style="width:97%; background:#ffcc00; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase; font-size:14px; letter-spacing:0.5px;">Register & Claim Balance</button>
+            </form>
+            <p style="margin-top:20px; font-size:13px; color:#a0aec0;">
+                Already have a profile? <a href="#" onclick="toggleCards(false)" style="color:#ffcc00; text-decoration:none; font-weight:bold;">← Go Back to Login</a>
+            </p>
+        </div>
+
+        <script>
+            function toggleCards(showSignUp) {
+                document.getElementById('signin-card').style.display = showSignUp ? 'none' : 'block';
+                document.getElementById('signup-card').style.display = showSignUp ? 'block' : 'none';
+            }
+        </script>
     </body>
     '''
 
@@ -312,7 +368,6 @@ def admin():
             
     current_state = get_current_match_state()
     
-    # Generate live rows of placed bets for admin supervision
     bet_rows = ""
     for b in reversed(placed_bets):
         legs_desc = ", ".join([f"{l['home']}-{l['away']} ({l['market']})" for l in b['selections']])
@@ -373,7 +428,6 @@ def get_state():
     standings_ita = get_league_standings(current_state['round'], ITALIAN_TEAMS, 111)
     standings_eng = get_league_standings(current_state['round'], ENGLISH_TEAMS, 222)
     
-    # Process pending bets
     for b in placed_bets:
         if b['status'] == 'PENDING' and b['round'] < current_state['round']:
             past_ita = {f['home']: f for f in generate_fixtures_for_round(b['round'], ITALIAN_TEAMS, 111)}
