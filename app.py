@@ -14,7 +14,7 @@ app.config.update(
     SESSION_COOKIE_SAMESITE='Lax',
 )
 
-# --- DATABASE STRUCTURE ---
+# --- DATABASE LOGIC ---
 users = {
     'admin@swiftpitch.com': {
         'password': 'adminpassword', 
@@ -32,11 +32,19 @@ users = {
 
 placed_bets = []
 
-LEAGUE_TEAMS = [
+# --- LEAGUE SQUADS DATA ---
+ITALIAN_TEAMS = [
     "Roma", "Juventus", "Milaan Reds", "Torino", "Fiorentina",
     "Bologna", "Sassuolo", "Lazio", "Verona", "Atlanta",
     "Monza", "Cremonese", "Leece", "Udinese", "Spenzia",
     "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"
+]
+
+ENGLISH_TEAMS = [
+    "Manchester blue", "spurs", "A.Villa", "London blues", "Manchester red",
+    "New castle", "Everton", "Bournemouth", "N. forrest", "Brighton",
+    "London reds", "Brentford", "Wolves", "west Ham", "Southampton",
+    "Fulham", "Liverpool", "C.Palace", "Leicester", "Leeds"
 ]
 
 state = {
@@ -62,11 +70,11 @@ def get_mpesa_access_token():
         pass
     return None
 
-# --- CORE SIMULATION ENGINE LOGIC ---
+# --- ENGINE CALCULATION MATRICES ---
 
-def generate_fixtures_for_round(round_num):
-    random.seed(round_num + 999) 
-    shuffled_teams = list(LEAGUE_TEAMS)
+def generate_fixtures_for_round(round_num, team_list, seed_offset):
+    random.seed(round_num + seed_offset) 
+    shuffled_teams = list(team_list)
     random.shuffle(shuffled_teams)
     
     fixtures = []
@@ -79,7 +87,7 @@ def generate_fixtures_for_round(round_num):
         away_odds = round(random.uniform(1.40, 5.00), 2)
         
         fixtures.append({
-            'id': f"fix_{round_num}_{i}",
+            'id': f"fix_{round_num}_{i}_{seed_offset}",
             'home': home,
             'away': away,
             'home_score': random.randint(0, 4),
@@ -116,7 +124,9 @@ def get_current_match_state():
         phase = 'PLAYING'
         time_left = 115 - time_into_current_loop
         
-    fixtures = generate_fixtures_for_round(current_round)
+    # Generate both lanes concurrently using separate seed indexes
+    italian_fixtures = generate_fixtures_for_round(current_round, ITALIAN_TEAMS, 111)
+    english_fixtures = generate_fixtures_for_round(current_round, ENGLISH_TEAMS, 222)
         
     return {
         'phase': phase,
@@ -124,28 +134,27 @@ def get_current_match_state():
         'time_into_loop': time_into_current_loop,
         'round': current_round,
         'season': season_number,
-        'fixtures': fixtures
+        'italian_fixtures': italian_fixtures,
+        'english_fixtures': english_fixtures
     }
 
-def generate_live_commentary(fixtures, time_into_loop, round_num):
-    """Generates procedural AI sports commentary events based on the live simulation matrix."""
-    # Use the current countdown second to seed the randomized commentary picks
+def generate_live_commentary(fixtures_ita, fixtures_eng, time_into_loop, round_num):
     random.seed(time_into_loop + round_num)
     
-    # Pick one match from the round to highlight for this live update cycle
-    focus_match = random.choice(fixtures)
+    # Merge both match coupons to allow the AI commentator to watch both lanes
+    all_fixtures = fixtures_ita + fixtures_eng
+    focus_match = random.choice(all_fixtures)
+    
     home = focus_match['home']
     away = focus_match['away']
     h_score = focus_match['home_score']
     a_score = focus_match['away_score']
     
-    # Game minute mapper (converts the 55-second simulation phase into a 90-minute timeline)
     playing_second = time_into_loop - 60
     match_minute = int((playing_second / 55.0) * 90)
     if match_minute < 1: match_minute = 1
     if match_minute > 90: match_minute = 90
 
-    # Commentary scripts categories
     goal_commentary = [
         f"🎙️ GOOOAAAL! Incredible scenes here! {home} breaks through the defensive wall!",
         f"🎙️ BALL IN THE NET! A masterclass finish from the {away} forward line!",
@@ -163,18 +172,15 @@ def generate_live_commentary(fixtures, time_into_loop, round_num):
         f"🎙️ [{match_minute}'] SPECTACULAR SAVE! The goalkeeper dives wide to deny {away} a clean opener!"
     ]
     
-    # If it is a high-scoring game state or a lucky random draw, narrate a goal event
     if (h_score > 0 or a_score > 0) and random.random() > 0.65:
-        scoring_team = home if h_score >= a_score else away
         return f"[{match_minute}'] " + random.choice(goal_commentary) + f" ({home} {h_score} - {a_score} {away})"
     
-    # Otherwise, return regular dynamic match telemetries
     return random.choice(midfield_commentary)
 
-def get_league_standings(current_round):
-    table = {team: {'name': team, 'mp': 0, 'w': 0, 'd': 0, 'l': 0, 'pts': 0} for team in LEAGUE_TEAMS}
+def get_league_standings(current_round, teams_list, seed_offset):
+    table = {team: {'name': team, 'mp': 0, 'w': 0, 'd': 0, 'l': 0, 'pts': 0} for team in teams_list}
     for r in range(1, current_round):
-        fixtures = generate_fixtures_for_round(r)
+        fixtures = generate_fixtures_for_round(r, teams_list, seed_offset)
         for f in fixtures:
             h, a = f['home'], f['away']
             hs, as_ = f['home_score'], f['away_score']
@@ -188,16 +194,22 @@ def get_league_standings(current_round):
                 
     return sorted(table.values(), key=lambda x: x['pts'], reverse=True)
 
-# --- ROUTING PLATFORM ---
+# --- CONTROLLER ROUTING ---
 
 @app.route('/')
 def index():
     if 'user' not in session or session['user'] not in users:
+        session.clear()
         return redirect(url_for('login'))
-    current_state = get_current_match_state()
-    standings = get_league_standings(current_state['round'])
-    my_bets = [b for b in placed_bets if b['email'] == session['user']]
-    return render_template('index.html', state=current_state, user=users[session['user']], standings=standings, bets=my_bets)
+        
+    try:
+        current_state = get_current_match_state()
+        standings_ita = get_league_standings(current_state['round'], ITALIAN_TEAMS, 111)
+        my_bets = [b for b in placed_bets if b['email'] == session['user']]
+        return render_template('index.html', state=current_state, user=users[session['user']], standings=standings_ita, bets=my_bets)
+    except Exception as e:
+        session.clear()
+        return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -272,152 +284,4 @@ def deposit():
     except Exception:
         users[session['user']]['balance'] += amount
         flash("Connection timed out. Local simulation credit executed.")
-    return redirect(url_for('index'))
-
-@app.route('/place-multibet', methods=['POST'])
-def place_multibet():
-    if 'user' not in session: return jsonify({'success': False, 'message': 'Session expired.'}), 401
-    
-    current_state = get_current_match_state()
-    if current_state['phase'] != 'BETTING':
-        return jsonify({'success': False, 'message': 'Market closed! Matches are already in play.'}), 400
-        
-    data = request.get_json() or {}
-    selections = data.get('selections', []) 
-    try: stake = float(data.get('stake', 0))
-    except ValueError: stake = 0
-    
-    if stake < 10:
-        return jsonify({'success': False, 'message': 'Minimum stake is 10 KSH.'}), 400
-        
-    user = users[session['user']]
-    if user['balance'] < stake:
-        return jsonify({'success': False, 'message': 'Insufficient account balance.'}), 400
-        
-    if not selections:
-        return jsonify({'success': False, 'message': 'Your betslip coupon is completely empty.'}), 400
-
-    current_fixtures = {f['id']: f for f in current_state['fixtures']}
-    validated_selections = []
-    accumulated_odds = 1.0
-    
-    for sel in selections:
-        fix_id = sel.get('fixture_id')
-        market = sel.get('market') 
-        
-        if fix_id not in current_fixtures:
-            return jsonify({'success': False, 'message': 'Invalid match selection found.'}), 400
-            
-        fixture = current_fixtures[fix_id]
-        if market not in ['HOME', 'DRAW', 'AWAY']:
-            return jsonify({'success': False, 'message': 'Invalid market option choice.'}), 400
-            
-        market_odds = fixture['odds'][market]
-        accumulated_odds *= market_odds
-        
-        validated_selections.append({
-            'fixture_id': fix_id,
-            'home': fixture['home'],
-            'away': fixture['away'],
-            'market': market,
-            'odds': market_odds
-        })
-        
-    accumulated_odds = round(accumulated_odds, 2)
-    user['balance'] -= stake
-    
-    placed_bets.append({
-        'id': f"ticket_{int(time.time())}_{random.randint(1000,9999)}",
-        'email': session['user'],
-        'round': current_state['round'],
-        'season': current_state['season'],
-        'selections': validated_selections,
-        'stake': stake,
-        'total_odds': accumulated_odds,
-        'status': 'PENDING'
-    })
-    
-    return jsonify({'success': True, 'message': 'Bet ticket submitted and successfully verified!'})
-
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    if 'user' not in session: return redirect(url_for('login'))
-    if not users.get(session['user'], {}).get('is_admin', False): return "Forbidden", 403
-    
-    if request.method == 'POST':
-        action = request.form.get('action')
-        if action == 'start' and not state['is_running']:
-            state['is_running'] = True
-            state['start_time'] = time.time() - state['paused_elapsed']
-        elif action == 'stop' and state['is_running']:
-            state['is_running'] = False
-            state['paused_elapsed'] = time.time() - state['start_time']
-            
-    current_state = get_current_match_state()
-    current_state['is_running'] = state['is_running']
-    return render_template('admin.html', state=current_state, total_bets=placed_bets, company_balance=state['company_balance'])
-
-@app.route('/api/state')
-def get_state():
-    current_state = get_current_match_state()
-    standings = get_league_standings(current_state['round'])
-    
-    for b in placed_bets:
-        if b['status'] == 'PENDING' and b['round'] < current_state['round']:
-            past_fixtures = {f['home']: f for f in generate_fixtures_for_round(b['round'])}
-            
-            ticket_failed = False
-            for leg in b['selections']:
-                fix = past_fixtures.get(leg['home'])
-                if not fix:
-                    ticket_failed = True; break
-                    
-                hs, as_ = fix['home_score'], fix['away_score']
-                
-                if leg['market'] == 'HOME' and not (hs > as_): ticket_failed = True
-                elif leg['market'] == 'DRAW' and not (hs == as_): ticket_failed = True
-                elif leg['market'] == 'AWAY' and not (as_ > hs): ticket_failed = True
-                
-                if ticket_failed: break
-                
-            if ticket_failed:
-                b['status'] = 'LOST'
-                state['company_balance'] += b['stake'] 
-            else:
-                b['status'] = 'WON'
-                payout = round(b['stake'] * b['total_odds'], 2)
-                users[b['email']]['balance'] += payout
-                state['company_balance'] -= (payout - b['stake']) 
-
-    # --- LIVE AI COMMENTARY FEED ENGINE INTEGRATION ---
-    if current_state['phase'] == 'PLAYING':
-        # Generate match feed commentary phrases during simulation runtime
-        commentary_line = generate_live_commentary(current_state['fixtures'], current_state['time_into_loop'], current_state['round'])
-        logs_feed = [
-            f"[System] Season {current_state['season']} | Round #{current_state['round']} active.",
-            commentary_line
-        ]
-    else:
-        logs_feed = [
-            f"[System] Season {current_state['season']} | Round #{current_state['round']} complete.",
-            "🎙️ [Pre-Match] The market coupon is open! Players are arranging their multibet selections."
-        ]
-
-    return {
-        'phase': current_state['phase'],
-        'time': current_state['time'],
-        'round': current_state['round'],
-        'season': current_state['season'],
-        'fixtures': current_state['fixtures'],
-        'standings': standings,
-        'company_balance': state['company_balance'], 
-        'logs': logs_feed
-    }
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    return redirect
