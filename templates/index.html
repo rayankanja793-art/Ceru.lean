@@ -5,328 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SwiftPitch Dashboard</title>
     <style>
-        body { font-family: sans-serif; background-color: #0b1118; color: #f5f7fa; margin: 0; padding: 15px; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #121b26; padding: 12px 20px; border-radius: 8px; border-bottom: 3px solid #ffcc00; margin-bottom: 20px; }
-        .main-layout { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
-        @media (max-width: 950px) { .main-layout { grid-template-columns: 1fr; } }
-        .card { background-color: #121b26; border-radius: 8px; padding: 18px; border: 1px solid #1c2a39; margin-bottom: 15px; }
-        .lane-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-        .lane-btn { background: #1c2a39; border: 2px solid #1c2a39; color: #a0aec0; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; flex: 1; text-transform: uppercase; }
-        .lane-btn.active-lane { border-color: #ffcc00; color: #ffcc00; background: #121b26; }
-        .lane-btn.aviator-lane-btn { border-color: #ff3333; color: #ff3333; }
-        
-        #aviator-arena { background: #121b26; border: 2px solid #ff3333; border-radius: 8px; padding: 20px; text-align: center; }
-        .canvas-wrapper { position: relative; background: #070b10; border-radius: 6px; margin-bottom: 15px; }
-        #aviatorCanvas { width: 100%; height: 260px; display: block; }
-        .mult-text { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 55px; font-weight: 900; color: white; font-family: monospace; }
-        
-        .aviator-btn { background: #ff3333; color: white; font-size: 16px; font-weight: bold; padding: 12px; border: none; border-radius: 4px; cursor: pointer; width: 100%; text-transform: uppercase; }
-        .fix-row { display: grid; grid-template-columns: 1fr 180px; align-items: center; padding: 12px; border-bottom: 1px solid #1c2a39; }
-        .odds-btn { background: #1c2a39; border: 1px solid #ffcc00; color: #ffcc00; padding: 6px 10px; margin: 2px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
-        .odds-btn:hover { background: #ffcc00; color: #000; }
-        .slip-badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        .status-open { background: #2b4c7e; color: #fff; }
-        .status-won { background: #1c7e46; color: #fff; }
-        .status-lost { background: #7e2b2b; color: #fff; }
-        
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px; border-bottom: 1px solid #1c2a39; text-align: left; }
-        .admin-box { background: #161a22; border: 2px solid #ffcc00; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        body { background: #0b1118; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
+        .nav { display: flex; justify-content: space-between; background: #121b26; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+        .card { background: #121b26; padding: 20px; border-radius: 8px; border: 1px solid #1c2a39; }
+        .aviator-box { text-align: center; border: 2px solid #ffcc00; }
+        .multiplier { font-size: 48px; font-weight: bold; color: #ffcc00; margin: 20px 0; }
+        input, button { padding: 10px; border-radius: 4px; border: none; margin: 5px; }
+        button { cursor: pointer; font-weight: bold; background: #00ff66; }
+        .error { color: #ff3333; }
     </style>
 </head>
 <body>
 
-    <div class="navbar">
-        <div style="font-size: 22px; font-weight: bold; color: #ffcc00;">⚽ SWIFTPITCH</div>
-        <div style="font-weight: bold;">
-            Wallet: <span style="color: #00ff66;" id="live-wallet">0.00 KSH</span>
-            <a href="/logout" style="margin-left: 15px; color: #ffcc00; text-decoration: none;">Logout</a>
+<div class="nav">
+    <div><strong>SWIFTPITCH</strong> | Wallet: <span id="user-balance">0</span> KSH</div>
+    <div>House Balance: <span id="house-balance">0</span> KSH | <a href="/logout" style="color:red;">Logout</a></div>
+</div>
+
+<div class="grid">
+    <div>
+        <div class="card aviator-box">
+            <h2>✈️ Lucky Aviator</h2>
+            <div class="multiplier" id="mult-display">1.00x</div>
+            <div id="status-display">Waiting...</div>
+            <br>
+            <input type="number" id="bet-amount" placeholder="Stake Amount" value="100">
+            <button onclick="placeBet()" id="bet-btn">PLACE BET</button>
+            <button onclick="cashOut()" id="cashout-btn" style="background:red; display:none;">CASH OUT</button>
+        </div>
+        
+        <div class="card" style="margin-top:20px;">
+            <h3>⚽ Live Matches</h3>
+            <div id="matches-list">Loading matches...</div>
         </div>
     </div>
 
-    {% if user.is_admin %}
-    <div class="admin-box">
-        <h3 style="margin-top:0; color:#ffcc00; display:flex; justify-content:space-between;">
-            <span>🛠️ Admin Control Dashboard</span>
-            <span style="color:#00ff66;">Company House Bank: <span id="company-vault">0.00</span> KSH</span>
-        </h3>
-        <div style="display:flex; gap:10px; flex-wrap: wrap;">
-            <select id="adm-league" style="padding:8px; background:#0b1118; color:white; border:1px solid #1c2a39;">
-                <option value="ITALIAN">🇮🇹 Italian League</option>
-                <option value="ENGLISH">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English League</option>
-            </select>
-            <input type="text" id="adm-team" placeholder="Home Team Name" style="padding:8px; background:#0b1118; color:white; border:1px solid #1c2a39;">
-            <input type="number" id="adm-hscore" placeholder="Home Score" style="width:90px; padding:8px; background:#0b1118; color:white; border:1px solid #1c2a39;">
-            <input type="number" id="adm-ascore" placeholder="Away Score" style="width:90px; padding:8px; background:#0b1118; color:white; border:1px solid #1c2a39;">
-            <button onclick="submitAdminOverride()" style="background:#ffcc00; color:black; font-weight:bold; border:none; padding:8px 15px; cursor:pointer; border-radius:4px;">Force Result</button>
-            <button onclick="clearAdminOverrides()" style="background:#ff3333; color:white; font-weight:bold; border:none; padding:8px 15px; cursor:pointer; border-radius:4px;">Reset Engines</button>
+    <div>
+        <div class="card">
+            <h3>💳 Account</h3>
+            <form action="/deposit" method="POST">
+                <input type="number" name="amount" placeholder="Amount" required>
+                <button type="submit" style="background:#00ccff;">DEPOSIT</button>
+            </form>
         </div>
     </div>
-    {% endif %}
+</div>
 
-    <div class="lane-tabs">
-        <button class="lane-btn aviator-lane-btn active-lane" id="tab-av" onclick="switchLane('AVIATOR')">✈️ Lucky Aviator Arena</button>
-        <button class="lane-btn" id="tab-ita" onclick="switchLane('ITALIAN')">🇮🇹 Italian Serie A Lane</button>
-        <button class="lane-btn" id="tab-eng" onclick="switchLane('ENGLISH')">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier Lane</button>
-    </div>
+<script>
+    // 1. Polling Function (Updates Data every 500ms)
+    setInterval(() => {
+        fetch('/api/state')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('user-balance').innerText = data.user_balance.toFixed(2);
+            document.getElementById('house-balance').innerText = data.house_balance.toFixed(2);
+            
+            const aviator = data.aviator;
+            document.getElementById('mult-display').innerText = aviator.multiplier.toFixed(2) + 'x';
+            document.getElementById('status-display').innerText = aviator.phase;
 
-    <div class="main-layout">
-        <div>
-            <div id="aviator-arena">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <h3 style="margin:0; color:#ff3333;">✈️ LUCKY AVIATOR</h3>
-                    <div id="aviator-status" style="color:#ffcc00; font-weight:bold;">Loading...</div>
-                </div>
-                <div class="canvas-wrapper">
-                    <canvas id="aviatorCanvas" width="750" height="260"></canvas>
-                    <div class="mult-text" id="mult-counter">1.00x</div>
-                </div>
-                <div style="display: grid; grid-template-columns: 140px 1fr; gap: 15px; background: #0b1118; padding: 12px; border-radius: 6px;">
-                    <input type="number" id="aviator-stake" value="50" min="10" style="background:#121b26; border:1px solid #1c2a39; color:white; font-size:18px; text-align:center; border-radius:4px; font-weight:bold;">
-                    <button id="aviator-btn" class="aviator-btn" onclick="handleAviatorAction()">Place Stake</button>
-                </div>
-            </div>
-
-            <div id="sportsbook-zone" style="display:none;">
-                <div class="card" style="border-bottom: 3px solid #00ff66;">
-                    <h3 style="margin-top:0; display:flex; justify-content:between;" id="lane-label">Fixtures</h3>
-                    <div id="league-timer-alert" style="font-size:13px; color:#ffcc00; font-weight:bold; margin-bottom:10px;"></div>
-                    <div id="fixtures-box"></div>
-                </div>
-                <div class="card">
-                    <h3 style="margin-top:0;" id="table-label">Championship Standings</h3>
-                    <table>
-                        <thead>
-                            <tr><th>Pos</th><th>Squad Club</th><th>MP</th><th>PTS</th></tr>
-                        </thead>
-                        <tbody id="standings-box"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div>
-            <div class="card" id="bet-slip-panel" style="border: 2px solid #ffcc00; display:none;">
-                <h4 style="margin-top:0; color:#ffcc00;">🎟️ Live Betting Slip</h4>
-                <div id="slip-empty-text" style="color:#a0aec0; font-size:13px;">Click odds multiplier on a match to form selection.</div>
-                <div id="slip-active-content" style="display:none;">
-                    <div style="font-size:14px; font-weight:bold; id='slip-match-title'">Selection: <span id="slip-teams"></span></div>
-                    <div style="font-size:13px; margin: 5px 0;">Market Pick: <strong id="slip-pick" style="color:#ffcc00"></strong> @ <strong id="slip-odds" style="color:#00ff66"></strong></div>
-                    <input type="number" id="slip-stake" value="100" min="10" style="width:90%; padding:8px; background:#0b1118; border:1px solid #1c2a39; color:white; font-weight:bold; margin-bottom:10px; border-radius:4px;">
-                    <button onclick="confirmBetSlipSubmission()" style="width:100%; background:#ffcc00; border:none; padding:10px; font-weight:bold; border-radius:4px; cursor:pointer;">SUBMIT SLIP TICKET</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h4 style="margin-top:0; color:#a0aec0;">📋 Placed Bet Tickets</h4>
-                <div id="my-tickets-container" style="font-size:12px; max-height:200px; overflow-y:auto;"></div>
-            </div>
-
-            <div class="card" style="border-color:#00ff66;">
-                <h4 style="margin-top:0; color:#00ff66;">💳 Deposit Funds (Min: 10 Bob)</h4>
-                <form action="/deposit" method="POST">
-                    <input type="number" name="amount" min="10" placeholder="Amount (KSH)" required style="width:88%; padding:10px; background:#0b1118; border:1px solid #1c2a39; color:white; margin-bottom:10px; border-radius:4px;">
-                    <button type="submit" style="width:100%; background:#00ff66; border:none; padding:10px; color:black; font-weight:bold; border-radius:4px; cursor:pointer;">Deposit</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let currentLane = "AVIATOR";
-        let activeRoundId = 0;
-        let selectedSelection = null; // Active stake tracking parameters
-        const canvas = document.getElementById('aviatorCanvas');
-        const ctx = canvas.getContext('2d');
-
-        function switchLane(lane) {
-            currentLane = lane;
-            document.getElementById('tab-av').classList.toggle('active-lane', lane === 'AVIATOR');
-            document.getElementById('tab-ita').classList.toggle('active-lane', lane === 'ITALIAN');
-            document.getElementById('tab-eng').classList.toggle('active-lane', lane === 'ENGLISH');
-
-            if(lane === 'AVIATOR') {
-                document.getElementById('aviator-arena').style.display = 'block';
-                document.getElementById('sportsbook-zone').style.display = 'none';
-                document.getElementById('bet-slip-panel').style.display = 'none';
+            if(aviator.phase === 'FLYING') {
+                document.getElementById('bet-btn').style.display = 'none';
+                document.getElementById('cashout-btn').style.display = 'inline-block';
             } else {
-                document.getElementById('aviator-arena').style.display = 'none';
-                document.getElementById('sportsbook-zone').style.display = 'block';
-                document.getElementById('bet-slip-panel').style.display = 'block';
-                document.getElementById('lane-label').innerText = lane === 'ITALIAN' ? '🇮🇹 Italian Live Matches' : '🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Live Matches';
-                document.getElementById('table-label').innerText = lane === 'ITALIAN' ? '🇮🇹 Italian Standings' : '🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Standings';
-                refreshFootball();
+                document.getElementById('bet-btn').style.display = 'inline-block';
+                document.getElementById('cashout-btn').style.display = 'none';
             }
-        }
+        });
+    }, 500);
 
-        // Betting Slip Selection Engine
-        function selectOddsMarket(fixtureId, teams, market, odds) {
-            selectedSelection = { fixture_id: fixtureId, teams: teams, prediction: market, odds: odds };
-            document.getElementById('slip-empty-text').style.display = 'none';
-            document.getElementById('slip-active-content').style.display = 'block';
-            document.getElementById('slip-teams').innerText = teams;
-            document.getElementById('slip-pick').innerText = market === '1' ? 'Home Win' : market === '2' ? 'Away Win' : 'Draw';
-            document.getElementById('slip-odds').innerText = odds;
-        }
+    // 2. Betting Actions
+    function placeBet() {
+        const stake = document.getElementById('bet-amount').value;
+        fetch('/api/aviator/bet', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({stake: stake})
+        }).then(r => r.json()).then(d => {
+            if(d.success) alert("Bet Placed!");
+            else alert("Balance too low or Game not in Betting phase.");
+        });
+    }
 
-        function confirmBetSlipSubmission() {
-            const stake = document.getElementById('slip-stake').value;
-            if(!selectedSelection) return;
-            
-            fetch('/api/sportsbook/bet', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    fixture_id: selectedSelection.fixture_id,
-                    teams: selectedSelection.teams,
-                    prediction: selectedSelection.prediction,
-                    odds: selectedSelection.odds,
-                    stake: parseFloat(stake)
-                })
-            }).then(r=>r.json()).then(d => {
-                if(d.success) {
-                    alert("Ticket Issued Successfully!");
-                    document.getElementById('slip-active-content').style.display = 'none';
-                    document.getElementById('slip-empty-text').style.display = 'block';
-                    selectedSelection = null;
-                    updateTicketsPanel();
-                } else { alert(d.message); }
-            });
-        }
-
-        function updateTicketsPanel() {
-            fetch('/api/sportsbook/mybets').then(r=>r.json()).then(data => {
-                let html = '';
-                data.forEach(b => {
-                    html += `<div style="border-bottom:1px dashed #1c2a39; padding:6px 0;">
-                        <div><strong>R${b.round}</strong>: ${b.teams} (Pick: ${b.prediction})</div>
-                        <div style="display:flex; justify-content:space-between; margin-top:2px;">
-                            <span>Stake: ${b.stake} Bob (Odds: ${b.odds})</span>
-                            <span class="slip-badge status-${b.status.toLowerCase()}">${b.status} ${b.score_feed !== 'Vb' ? '['+b.score_feed+']':''}</span>
-                        </div>
-                    </div>`;
-                });
-                document.getElementById('my-tickets-container').innerHTML = html || 'No placed slips found.';
-            });
-        }
-
-        function drawGraph(phase, mult) {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            ctx.strokeStyle = '#16222f';
-            for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
-            for(let j=0; j<canvas.height; j+=50) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(canvas.width,j); ctx.stroke(); }
-            
-            let pX = 50, pY = 220;
-            if(phase === 'FLYING') {
-                pX = Math.min(canvas.width - 40, 50 + (mult - 1) * 70);
-                pY = Math.max(30, 220 - (mult - 1) * 35);
-                ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 4;
-                ctx.beginPath(); ctx.moveTo(50,220); ctx.quadraticCurveTo(pX/2+25, 220, pX, pY); ctx.stroke();
-            }
-            ctx.fillStyle = '#ff3333'; ctx.beginPath(); ctx.arc(pX, pY, 8, 0, 2*Math.PI); ctx.fill();
-        }
-
-        function handleAviatorAction() {
-            const btn = document.getElementById('aviator-btn');
-            const amt = document.getElementById('aviator-stake').value;
-            if(btn.innerText === "PLACE STAKE") {
-                fetch('/api/aviator/bet', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount:parseFloat(amt)}) })
-                .then(r=>r.json()).then(d => { if(d.success) btn.innerText = "WAITING..."; else alert(d.message); });
-            } else if(btn.innerText.includes("CASH OUT")) {
-                fetch('/api/aviator/cashout', { method:'POST', headers:{'Content-Type':'application/json'} })
-                .then(r=>r.json()).then(d => { if(d.success) alert(`Cashed out at ${d.multiplier}x!`); else alert(d.message); });
-            }
-        }
-
-        setInterval(() => {
-            fetch('/api/aviator/state').then(r=>r.json()).then(d => {
-                document.getElementById('live-wallet').innerText = d.user_wallet.toFixed(2) + ' KSH';
-                activeRoundId = d.round_id;
-                const btn = document.getElementById('aviator-btn');
-
-                if(d.phase === 'BETTING') {
-                    document.getElementById('aviator-status').innerText = `Next Flight: ${d.time_left}s`;
-                    document.getElementById('mult-counter').innerText = "BOARDING";
-                    document.getElementById('mult-counter').style.color = '#ffcc00';
-                    if(!d.has_bet) { btn.innerText = "PLACE STAKE"; btn.disabled = false; btn.style.background = '#ff3333'; }
-                } else if(d.phase === 'FLYING') {
-                    document.getElementById('aviator-status').innerText = "LIVE FLIGHT IN AIR";
-                    document.getElementById('mult-counter').innerText = d.current_multiplier.toFixed(2) + 'x';
-                    document.getElementById('mult-counter').style.color = 'white';
-                    if(d.has_bet) {
-                        btn.innerText = `CASH OUT (${(d.bet_amount * d.current_multiplier).toFixed(2)} KSH)`;
-                        btn.style.background = '#ffcc00'; btn.style.color = 'black';
-                    } else if(btn.innerText !== "PLACE STAKE") { btn.innerText = "CLOSED"; btn.disabled = true; }
-                } else {
-                    document.getElementById('aviator-status').innerText = "CRASHED";
-                    document.getElementById('mult-counter').innerText = "FLEW AWAY";
-                    document.getElementById('mult-counter').style.color = '#ff3333';
-                    btn.innerText = "CRASHED"; btn.disabled = true;
-                }
-                drawGraph(d.phase, d.current_multiplier);
-            });
-        }, 200);
-
-        function refreshFootball() {
-            fetch('/api/state').then(r=>r.json()).then(d => {
-                // Update company ledger metrics if admin panel container exists on template compilation
-                if(document.getElementById('company-vault')) {
-                    document.getElementById('company-vault').innerText = d.company_balance.toLocaleString(undefined, {minimumFractionDigits: 2});
-                }
-
-                let fixtures = currentLane === 'ITALIAN' ? d.italian_fixtures : d.english_fixtures;
-                let standings = currentLane === 'ITALIAN' ? d.standings_ita : d.standings_eng;
-                
-                let modeText = d.phase === 'BETTING' ? `⏳ Betting open! Matches start in: ${d.time}s` : `🔴 Matches currently in play!`;
-                document.getElementById('league-timer-alert').innerText = modeText;
-
-                let fixHtml = '';
-                fixtures.forEach(f => {
-                    let scoreDisplay = d.phase === 'BETTING' ? 'vs' : `${f.home_score} - ${f.away_score}`;
-                    let label = `${f.home} vs ${f.away}`;
-                    
-                    fixHtml += `<div class="fix-row">
-                        <div><strong>${f.home}</strong> <span style='color:#a0aec0'>${scoreDisplay}</span> <strong>${f.away}</strong></div>
-                        <div>
-                            <button class="odds-btn" onclick="selectOddsMarket('${f.id}','${label}','1', ${f.odds['1']})">1 (${f.odds['1']})</button>
-                            <button class="odds-btn" onclick="selectOddsMarket('${f.id}','${label}','X', ${f.odds['X']})">X (${f.odds['X']})</button>
-                            <button class="odds-btn" onclick="selectOddsMarket('${f.id}','${label}','2', ${f.odds['2']})">2 (${f.odds['2']})</button>
-                        </div>
-                    </div>`;
-                });
-                document.getElementById('fixtures-box').innerHTML = fixHtml;
-
-                let standHtml = '';
-                standings.forEach((t, i) => {
-                    standHtml += `<tr><td>${i+1}</td><td><strong>${t.name}</strong></td><td>${t.mp}</td><td style="color:#00ff66;font-weight:bold;">${t.pts}</td></tr>`;
-                });
-                document.getElementById('standings-box').innerHTML = standHtml;
-            });
-        }
-        setInterval(refreshFootball, 3000);
-        setInterval(updateTicketsPanel, 5000);
-        updateTicketsPanel();
-
-        function submitAdminOverride() {
-            const league = document.getElementById('adm-league').value;
-            const team = document.getElementById('adm-team').value;
-            const hscore = document.getElementById('adm-hscore').value;
-            const ascore = document.getElementById('adm-ascore').value;
-            
-            fetch('/admin/control', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: 'force_result', league: league, home_team: team, home_score: hscore, away_score: ascore })
-            }).then(r=>r.json()).then(d => alert(d.message));
-        }
-
-        function clearAdminOverrides() {
-            fetch('/admin/control', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: 'clear_overrides' })
-            }).then(r=>r.json()).then(d => alert(d.message));
-        }
-    </script>
+    function cashOut() {
+        fetch('/api/aviator/cashout', { method: 'POST' })
+        .then(r => r.json()).then(d => {
+            if(d.success) alert("Cashed out: " + d.winnings);
+            else alert("Cashout failed.");
+        });
+    }
+</script>
 </body>
 </html>
