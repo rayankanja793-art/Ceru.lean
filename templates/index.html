@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SwiftPitch - Virtual Multi-League Dashboard</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0b1118; color: #f5f7fa; margin: 0; padding: 15px; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #0b1118; color: #f5f7fa; margin: 0; padding: 15px; }
         .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #121b26; padding: 12px 20px; border-radius: 8px; border-bottom: 3px solid #ffcc00; margin-bottom: 20px; }
         .logo { font-size: 22px; font-weight: bold; color: #ffcc00; text-transform: uppercase; letter-spacing: 1px; }
         .main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
         @media (max-width: 900px) { .main-layout { grid-template-columns: 1fr; } }
         .card { background-color: #121b26; border-radius: 8px; padding: 18px; border: 1px solid #1c2a39; margin-bottom: 15px; }
         
-        /* Lane Selection Switches */
         .lane-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
         .lane-btn { background: #1c2a39; border: 2px solid #1c2a39; color: #a0aec0; padding: 10px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; flex: 1; text-transform: uppercase; font-size: 13px; }
         .lane-btn.active-lane { border-color: #ffcc00; color: #ffcc00; background: #121b26; }
@@ -21,7 +20,6 @@
         .fix-row { display: grid; grid-template-columns: 1fr 180px; align-items: center; padding: 10px; border-bottom: 1px solid #1c2a39; }
         .odds-box { display: flex; gap: 5px; }
         .odd-btn { background-color: #1c2a39; border: 1px solid #ffcc00; color: #ffcc00; padding: 6px; font-size: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; flex: 1; text-align: center; }
-        .odd-btn:hover { background-color: #ffcc00; color: #000; }
         .odd-btn.active { background-color: #00ff66; color: #000; border-color: #00ff66; }
         .slip-item { background: #1c2a39; padding: 10px; border-radius: 5px; margin-bottom: 8px; font-size: 12px; position: relative; border-left: 3px solid #00ff66; }
         .remove-leg { position: absolute; right: 8px; top: 8px; color: #ff3333; cursor: pointer; font-weight: bold; }
@@ -54,9 +52,7 @@
                         <input type="checkbox" id="voice-toggle" checked style="vertical-align: middle; margin-right: 5px;"> 🔊 Audio On
                     </label>
                 </div>
-                <div class="telemetry-container" id="live-telemetry-box">
-                    [System] Syncing multi-lane data streams...
-                </div>
+                <div class="telemetry-container" id="live-telemetry-box">[System] Connecting to multi-lane engine matrix...</div>
             </div>
 
             <div class="lane-tabs">
@@ -91,7 +87,7 @@
                     <span id="slip-count" style="font-size:12px; background:#1c2a39; padding:2px 8px; border-radius:10px; color:#fff;">0 Legs</span>
                 </h3>
                 <div id="empty-slip-msg" style="color:#a0aec0; font-size:13px; text-align:center; padding:15px 0;">
-                    Select across Italian or English lanes to build cross-league tickets!
+                    Select options across Italian or English lanes to build cross-league multibet tickets!
                 </div>
                 <div id="slip-legs-holder"></div>
                 
@@ -115,7 +111,7 @@
             <div class="card" style="border-color: #ff3333;">
                 <h3 style="margin-top: 0; color:#ff3333;">💳 Secure Safaricom M-Pesa Funding</h3>
                 <form action="/deposit" method="POST">
-                    <input type="text" name="phone_number" placeholder="M-Pesa Phone (e.g. 07...)" required style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; border-radius:4px; margin-bottom:10px;">
+                    <input type="text" placeholder="M-Pesa Phone Line" required style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; border-radius:4px; margin-bottom:10px;">
                     <input type="number" name="amount" min="10" placeholder="Amount in KSH" required style="width:93%; background:#0b1118; border:1px solid #1c2a39; padding:8px; color:white; border-radius:4px; margin-bottom:10px;">
                     <button type="submit" style="width:100%; background:#ff3333; color:white; font-weight:bold; padding:10px; border:none; border-radius:4px; cursor:pointer;">Initiate Instant Deposit</button>
                 </form>
