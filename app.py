@@ -5,7 +5,7 @@ import random
 app = Flask(__name__)
 app.secret_key = 'swiftpitch_high_roller_2026'
 
-# --- 1. SYSTEM DATA BOARDS ---
+# --- 1. SEPARATED LEAGUE DATA BOARDS ---
 ITALIAN_TEAMS = ["Roma", "Juventus", "Milaan Reds", "Torino", "Fiorentina", "Bologna", "Sassuolo", "Lazio", "Verona", "Atlanta", "Monza", "Cremonese", "Leece", "Udinese", "Spenzia", "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"]
 ENGLISH_TEAMS = ["Manchester blue", "spurs", "A.Villa", "London blues", "Manchester red", "New castle", "Everton", "Bournemouth", "N. forrest", "Brighton", "London reds", "Brentford", "Wolves", "west Ham", "Southampton", "Fulham", "Liverpool", "C.Palace", "Leicester", "Leeds"]
 
@@ -15,10 +15,13 @@ state = {
     'simulation_running': True,     
     'last_update': time.time(),
     'current_round': 1,
-    'live_matches': [],
-    'pending_matches': [],
+    'live_matches_italian': [],
+    'live_matches_english': [],
+    'pending_matches_italian': [],
+    'pending_matches_english': [],
     'match_logs': [],
-    'standings': {},
+    'standings_italian': {},
+    'standings_english': {},
     'aviator': {'phase': 'BETTING', 'start': time.time(), 'multiplier': 1.0, 'stakes': {}}
 }
 
@@ -27,23 +30,27 @@ users = {
     'admin@swiftpitch.com': {'password': 'adminpassword', 'phone': '0700000000', 'balance': 0.0, 'bonus': 0.0, 'bonus_locked': False, 'role': 'admin', 'bets': []}
 }
 
-# Initialize league scoreboard standings
-for team in ITALIAN_TEAMS + ENGLISH_TEAMS:
-    state['standings'][team] = {'played': 0, 'won': 0, 'draw': 0, 'lost': 0, 'points': 0}
+# Initialize separated scoreboard structures
+for team in ITALIAN_TEAMS:
+    state['standings_italian'][team] = {'played': 0, 'won': 0, 'draw': 0, 'lost': 0, 'points': 0}
+for team in ENGLISH_TEAMS:
+    state['standings_english'][team] = {'played': 0, 'won': 0, 'draw': 0, 'lost': 0, 'points': 0}
 
-# --- 2. CORE SIMULATION SIMULATOR ---
+# --- 2. MULTI-LEAGUE FIXTURE GENERATOR ---
 def generate_fixtures():
-    all_teams = ITALIAN_TEAMS + ENGLISH_TEAMS
-    random.shuffle(all_teams)
+    # Generate Italian Fixtures
+    random.shuffle(ITALIAN_TEAMS)
+    state['live_matches_italian'] = [
+        {'id': 1, 'league': 'ITALIAN', 'teams': f"{ITALIAN_TEAMS[0]} vs {ITALIAN_TEAMS[1]}", 't1': ITALIAN_TEAMS[0], 't2': ITALIAN_TEAMS[1], 'score': '0-0', 'status': 'LIVE', 'minute': 0}
+    ]
+    state['pending_matches_italian'] = [{'teams': f"{ITALIAN_TEAMS[2]} vs {ITALIAN_TEAMS[3]}"}]
     
-    state['live_matches'] = [
-        {'id': 1, 'teams': f"{all_teams[0]} vs {all_teams[1]}", 't1': all_teams[0], 't2': all_teams[1], 'score': '0-0', 'status': 'LIVE', 'minute': 0},
-        {'id': 2, 'teams': f"{all_teams[2]} vs {all_teams[3]}", 't1': all_teams[2], 't2': all_teams[3], 'score': '0-0', 'status': 'LIVE', 'minute': 0}
+    # Generate English Fixtures
+    random.shuffle(ENGLISH_TEAMS)
+    state['live_matches_english'] = [
+        {'id': 2, 'league': 'ENGLISH', 'teams': f"{ENGLISH_TEAMS[0]} vs {ENGLISH_TEAMS[1]}", 't1': ENGLISH_TEAMS[0], 't2': ENGLISH_TEAMS[1], 'score': '0-0', 'status': 'LIVE', 'minute': 0}
     ]
-    state['pending_matches'] = [
-        {'teams': f"{all_teams[4]} vs {all_teams[5]}"},
-        {'teams': f"{all_teams[6]} vs {all_teams[7]}"}
-    ]
+    state['pending_matches_english'] = [{'teams': f"{ENGLISH_TEAMS[2]} vs {ENGLISH_TEAMS[3]}"}]
 
 generate_fixtures()
 
@@ -52,78 +59,69 @@ def dynamic_engine_loop():
     dt = now - state['last_update']
     state['last_update'] = now
     
-    # Aviator Live Thread Simulation
+    # Aviator Timing Thread
     av_elapsed = now - state['aviator']['start']
     if state['aviator']['phase'] == 'BETTING' and av_elapsed > 10:
         state['aviator']['phase'] = 'FLYING'
         state['aviator']['start'] = now
         state['aviator']['multiplier'] = 1.0
     elif state['aviator']['phase'] == 'FLYING':
-        state['aviator']['multiplier'] += round(dt * 0.3, 2)
-        if state['aviator']['multiplier'] > random.uniform(1.5, 8.0):
+        state['aviator']['multiplier'] += round(dt * 0.4, 2)
+        if state['aviator']['multiplier'] > random.uniform(1.5, 7.0):
             state['aviator']['phase'] = 'BETTING'
             state['aviator']['start'] = now
             state['aviator']['stakes'] = {} 
 
-    # Soccer Match Progression Engine
     if not state['simulation_running']:
         return
 
-    for match in state['live_matches']:
+    # Process Both Leagues Simultaneously
+    all_live = state['live_matches_italian'] + state['live_matches_english']
+    for match in all_live:
         if match['status'] == 'LIVE':
-            match['minute'] += int(dt * 4) 
-            if random.random() < 0.05: 
+            match['minute'] += int(dt * 5) 
+            if random.random() < 0.06: 
                 s1, s2 = map(int, match['score'].split('-'))
-                if random.choice([True, False]): 
-                    s1 += 1
-                else: 
-                    s2 += 1  # Fixed: Added the missing colon here!
+                if random.choice([True, False]): s1 += 1
+                else: s2 += 1
                 match['score'] = f"{s1}-{s2}"
             
             if match['minute'] >= 90:
                 match['status'] = 'FINISHED'
                 finalize_match_statistics(match)
                 
-    if all(m['status'] == 'FINISHED' for m in state['live_matches']):
+    if all(m['status'] == 'FINISHED' for m in all_live):
         state['current_round'] += 1
         generate_fixtures()
 
 def finalize_match_statistics(match):
     s1, s2 = map(int, match['score'].split('-'))
     t1, t2 = match['t1'], match['t2']
+    league = match['league']
     
-    state['standings'][t1]['played'] += 1
-    state['standings'][t2]['played'] += 1
+    # Direct data to correct league table dictionary mapping
+    standings = state['standings_italian'] if league == 'ITALIAN' else state['standings_english']
+    
+    standings[t1]['played'] += 1
+    standings[t2]['played'] += 1
     
     if s1 > s2:
-        state['standings'][t1]['won'] += 1; state['standings'][t1]['points'] += 3
-        state['standings'][t2]['lost'] += 1
+        standings[t1]['won'] += 1; standings[t1]['points'] += 3
+        standings[t2]['lost'] += 1
         winner = t1
     elif s2 > s1:
-        state['standings'][t2]['won'] += 1; state['standings'][t2]['points'] += 3
-        state['standings'][t1]['lost'] += 1
+        standings[t2]['won'] += 1; standings[t2]['points'] += 3
+        standings[t1]['lost'] += 1
         winner = t2
     else:
-        state['standings'][t1]['draw'] += 1; state['standings'][t1]['points'] += 1
-        state['standings'][t2]['draw'] += 1; state['standings'][t2]['points'] += 1
+        standings[t1]['draw'] += 1; standings[t1]['points'] += 1
+        standings[t2]['draw'] += 1; standings[t2]['points'] += 1
         winner = 'DRAW'
         
-    log_entry = f"Round {state['current_round']} | {match['teams']} ended ({match['score']})"
+    log_entry = f"[{league}] Rd {state['current_round']} | {match['teams']} ({match['score']})"
     state['match_logs'].append(log_entry)
-    evaluate_user_bets(match, winner)
 
-def evaluate_user_bets(match, winner):
-    for email, user in users.items():
-        for bet in user.get('bets', []):
-            if bet['status'] == 'OPEN' and bet['match_id'] == match['id']:
-                if bet['predicted_winner'] == winner:
-                    bet['status'] = 'WON'
-                    user['balance'] += bet['payout']
-                    state['house_balance'] -= bet['payout'] 
-                else:
-                    bet['status'] = 'LOST'
-
-# --- 3. SECURE AUTH & REGISTRATION ---
+# --- 3. SECURE AUTH & TRANSFERS ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user' in session: return redirect(url_for('index'))
@@ -135,21 +133,16 @@ def login():
         
         if email not in users:
             if phone: 
-                users[email] = {
-                    'password': password, 'phone': phone, 'balance': 0.0,
-                    'bonus': 100.0, 'bonus_locked': True, 'role': 'user', 'bets': []
-                }
-                msg = "Welcome to SwiftPitch! You have received 100 KSH bonus. You are supposed to deposit 50 KSH to unlock your bonus."
+                users[email] = {'password': password, 'phone': phone, 'balance': 0.0, 'bonus': 100.0, 'bonus_locked': True, 'role': 'user', 'bets': []}
+                msg = "Welcome! You received 100 KSH bonus. Deposit 50 KSH to unlock it."
                 return render_template('login.html', message=msg)
-            else:
-                return render_template('login.html', error="Account does not exist. Fill out registration fields.")
+            return render_template('login.html', error="Account missing details.")
         
         if users[email]['password'] == password:
             session['user'] = email
             return redirect(url_for('index'))
     return render_template('login.html')
 
-# --- 4. SYSTEM TRANSACTION CONTROLLERS ---
 @app.route('/deposit', methods=['POST'])
 def deposit():
     user = users.get(session.get('user'))
@@ -162,36 +155,56 @@ def deposit():
                 user['balance'] += user['bonus']
                 user['bonus'] = 0.0
                 user['bonus_locked'] = False
-        else:
-            return "Minimum deposit limit is 10 KSH.", 400
     return redirect(url_for('index'))
 
 @app.route('/withdraw', methods=['POST'])
 def withdraw():
     user = users.get(session.get('user'))
-    if user:
+    if user and float(request.form.get('amount', 0)) >= 100.0:
         amount = float(request.form.get('amount', 0))
-        if amount >= 100.0: 
-            if user['balance'] >= amount:
-                user['balance'] -= amount
-                state['house_balance'] -= amount
-            else:
-                return "Insufficient funds.", 400
-        else:
-            return "Minimum withdrawal limit is 100 KSH.", 400
+        if user['balance'] >= amount:
+            user['balance'] -= amount
+            state['house_balance'] -= amount
     return redirect(url_for('index'))
 
-# --- 5. ADMINISTRATION CONTROL PANEL ---
+# --- 4. AVIATOR ENGINE BACKEND ENDPOINTS ---
+@app.route('/api/aviator/bet', methods=['POST'])
+def aviator_bet():
+    user = users.get(session.get('user'))
+    if not user or state['aviator']['phase'] != 'BETTING':
+        return jsonify({'success': False})
+    
+    data = request.get_json() or {}
+    stake = float(data.get('stake', 0))
+    if user['balance'] >= stake and stake >= 10:
+        user['balance'] -= stake
+        state['house_balance'] += stake
+        state['aviator']['stakes'][session['user']] = stake
+        return jsonify({'success': True})
+    return jsonify({'success': False})
+
+@app.route('/api/aviator/cashout', methods=['POST'])
+def aviator_cashout():
+    user = users.get(session.get('user'))
+    if not user or state['aviator']['phase'] != 'FLYING':
+        return jsonify({'success': False})
+    
+    stake = state['aviator']['stakes'].pop(session['user'], None)
+    if stake:
+        winnings = min(stake * state['aviator']['multiplier'], 300000.0)
+        user['balance'] += winnings
+        state['house_balance'] -= winnings
+        return jsonify({'success': True, 'winnings': winnings})
+    return jsonify({'success': False})
+
 @app.route('/admin/toggle', methods=['POST'])
 def toggle_simulation():
     user = users.get(session.get('user'), {})
     if user.get('role') != 'admin': return "Forbidden", 403
-    
     data = request.get_json() or {}
     state['simulation_running'] = data.get('run', True)
     return jsonify({'success': True, 'running': state['simulation_running']})
 
-# --- 6. ASYNC STATE INTERFACE REFRESHERS ---
 @app.route('/')
 def index():
     if 'user' not in session: return redirect(url_for('login'))
@@ -204,16 +217,16 @@ def get_state():
     return jsonify({
         'house_balance': state['house_balance'],
         'simulation_running': state['simulation_running'],
-        'live_matches': state['live_matches'],
-        'pending_matches': state['pending_matches'],
+        'live_matches': state['live_matches_italian'] + state['live_matches_english'],
+        'pending_matches': state['pending_matches_italian'] + state['pending_matches_english'],
         'match_logs': state['match_logs'],
-        'standings': state['standings'],
+        'standings_italian': state['standings_italian'],
+        'standings_english': state['standings_english'],
         'aviator': state['aviator'],
         'user_balance': current_user['balance'],
         'user_bonus': current_user['bonus'],
         'user_bonus_locked': current_user['bonus_locked'],
-        'user_role': current_user['role'],
-        'user_bets': current_user.get('bets', [])
+        'user_role': current_user['role']
     })
 
 @app.route('/logout')
