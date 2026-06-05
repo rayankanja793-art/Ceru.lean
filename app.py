@@ -152,24 +152,21 @@ def generate_live_commentary(fixtures_ita, fixtures_eng, time_into_loop, round_n
     if match_minute < 1: match_minute = 1
     if match_minute > 90: match_minute = 90
 
-    goal_commentary = [
-        f"🎙️ GOOOAAAL! Incredible scenes here! {home} breaks through the defensive wall!",
+    commentary_pool = [
+        f"🎙️ GOOOAAAL! Incredible scenes! {home} breaks through the defensive wall!",
         f"🎙️ BALL IN THE NET! A masterclass finish from the {away} forward line!",
         f"🎙️ GOAL! The keeper had absolutely no chance with that powerful strike!",
-        f"🎙️ UNBELIEVABLE GOAL! The stadium erupts as {home} clinical volley finds the top corner!"
-    ]
-    
-    midfield_commentary = [
+        f"🎙️ UNBELIEVABLE GOAL! The stadium erupts as {home} volley finds the top corner!",
         f"🎙️ [{match_minute}'] Tactical battle ongoing in midfield between {home} and {away}.",
-        f"🎙️ [{match_minute}'] {home} is maintaining possession nicely, looking for a crossing opportunity.",
-        f"🎙️ [{match_minute}'] Crucial sliding tackle intercept from the {away} central defensive midfielder!",
-        f"🎙️ [{match_minute}'] High intensity pressure here as {away} presses deep up the wings."
+        f"🎙️ [{match_minute}'] {home} is maintaining possession nicely, looking for an opening.",
+        f"🎙️ [{match_minute}'] Crucial sliding tackle intercept from the {away} central defender!",
+        f"🎙️ [{match_minute}'] SPECTACULAR SAVE! The goalkeeper dives wide to deny {away}!"
     ]
     
-    if (h_score > 0 or a_score > 0) and random.random() > 0.65:
-        return f"[{match_minute}'] " + random.choice(goal_commentary) + f" ({home} {h_score} - {a_score} {away})"
-    
-    return random.choice(midfield_commentary)
+    line = random.choice(commentary_pool)
+    if "GOAL" in line or "GOOOAAAL" in line:
+        return f"[{match_minute}'] " + line + f" ({home} {h_score} - {a_score} {away})"
+    return line
 
 def get_league_standings(current_round, teams_list, seed_offset):
     table = {team: {'name': team, 'mp': 0, 'w': 0, 'd': 0, 'l': 0, 'pts': 0} for team in teams_list}
@@ -259,9 +256,8 @@ def place_multibet():
     for sel in selections:
         fix_id = sel.get('fixture_id')
         market = sel.get('market') 
-        
         if fix_id not in current_fixtures:
-            return jsonify({'success': False, 'message': 'Invalid match selection found.'}), 400
+            return jsonify({'success': False, 'message': 'Invalid match selection.'}), 400
             
         fixture = current_fixtures[fix_id]
         market_odds = fixture['odds'][market]
@@ -298,7 +294,6 @@ def deposit():
     except ValueError: amount = 0
     if amount >= 10:
         users[session['user']]['balance'] += amount
-        flash(f"Deposited {amount} KSH successfully!")
     return redirect(url_for('index'))
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -316,18 +311,59 @@ def admin():
             state['paused_elapsed'] = time.time() - state['start_time']
             
     current_state = get_current_match_state()
-    current_state['is_running'] = state['is_running']
     
-    # Simple, functional inline Admin layout to prevent template loading issues
+    # Generate live rows of placed bets for admin supervision
+    bet_rows = ""
+    for b in reversed(placed_bets):
+        legs_desc = ", ".join([f"{l['home']}-{l['away']} ({l['market']})" for l in b['selections']])
+        color = "#ffcc00" if b['status'] == 'PENDING' else ("#00ff66" if b['status'] == 'WON' else "#ff3333")
+        bet_rows += f'''
+        <tr>
+            <td style="padding:8px; border-bottom:1px solid #1c2a39;">{b['email']}</td>
+            <td style="padding:8px; border-bottom:1px solid #1c2a39; font-size:12px;">{legs_desc}</td>
+            <td style="padding:8px; border-bottom:1px solid #1c2a39;">{b['stake']} KSH</td>
+            <td style="padding:8px; border-bottom:1px solid #1c2a39; color:{color}; font-weight:bold;">{b['status']}</td>
+        </tr>
+        '''
+
     return f'''
-    <body style="background:#0b1118; color:white; font-family:sans-serif; padding:30px;">
-        <h2 style="color:#ffcc00;">🛠️ SWIFTPITCH PRIVATE ADMIN PANEL</h2>
-        <p>Current Match Loop Status: <strong>{"RUNNING" if current_state['is_running'] else "PAUSED"}</strong></p>
-        <form method="POST">
-            <button type="submit" name="action" value="start" style="padding:10px 20px; background:#00ff66; border:none; margin-right:10px; font-weight:bold; cursor:pointer;">START SIMULATION</button>
-            <button type="submit" name="action" value="stop" style="padding:10px 20px; background:#ff3333; color:white; border:none; font-weight:bold; cursor:pointer;">PAUSE SIMULATION</button>
-        </form>
-        <br><a href="/" style="color:#ffcc00; text-decoration:none;">← Return to Main Sportsbook</a>
+    <body style="background:#0b1118; color:white; font-family:sans-serif; padding:30px; margin:0;">
+        <div style="max-width:900px; margin:0 auto;">
+            <h2 style="color:#ffcc00; border-bottom:2px solid #1c2a39; padding-bottom:10px;">🛠️ SWIFTPITCH ADMIN COMMAND CENTRE</h2>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
+                <div style="background:#121b26; padding:15px; border-radius:6px; border:1px solid #1c2a39;">
+                    <p style="margin:0 0 5px 0; color:#a0aec0;">System Vault Reserve</p>
+                    <h2 style="margin:0; color:#00ff66;">{state['company_balance']:,} KSH</h2>
+                </div>
+                <div style="background:#121b26; padding:15px; border-radius:6px; border:1px solid #1c2a39;">
+                    <p style="margin:0 0 5px 0; color:#a0aec0;">Engine Status</p>
+                    <h2 style="margin:0; color:#ffcc00;">{"RUNNING" if state['is_running'] else "PAUSED"}</h2>
+                </div>
+            </div>
+
+            <form method="POST" style="margin-bottom:30px;">
+                <button type="submit" name="action" value="start" style="padding:12px 24px; background:#00ff66; border:none; margin-right:10px; font-weight:bold; cursor:pointer; border-radius:4px;">START SIMULATION</button>
+                <button type="submit" name="action" value="stop" style="padding:12px 24px; background:#ff3333; color:white; border:none; font-weight:bold; cursor:pointer; border-radius:4px;">PAUSE SIMULATION</button>
+            </form>
+
+            <h3 style="color:#ffcc00;">📋 USER RISK ASSIGNMENT LEDGER (LIVE BETS)</h3>
+            <table style="width:100%; border-collapse:collapse; background:#121b26; text-align:left;">
+                <thead>
+                    <tr style="background:#1c2a39; color:#a0aec0;">
+                        <th style="padding:10px;">User Account</th>
+                        <th style="padding:10px;">Leg Selections</th>
+                        <th style="padding:10px;">Stake</th>
+                        <th style="padding:10px;">Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {bet_rows if bet_rows else '<tr><td colspan="4" style="padding:15px; text-align:center; color:#a0aec0;">No bets placed yet this round.</td></tr>'}
+                </tbody>
+            </table>
+            
+            <br><br><a href="/" style="color:#ffcc00; text-decoration:none; font-weight:bold;">← Back to Sportsbook Dashboard</a>
+        </div>
     </body>
     '''
 
@@ -367,12 +403,12 @@ def get_state():
     if current_state['phase'] == 'PLAYING':
         commentary_line = generate_live_commentary(current_state['italian_fixtures'], current_state['english_fixtures'], current_state['time_into_loop'], current_state['round'])
         logs_feed = [
-            f"[System] Live Vault Reserve: {state['company_balance']:,} KSH",
+            f"[System] Season {current_state['season']} | Round #{current_state['round']} active.",
             commentary_line
         ]
     else:
         logs_feed = [
-            f"[System] Live Vault Reserve: {state['company_balance']:,} KSH",
+            f"[System] Season {current_state['season']} | Round #{current_state['round']} active.",
             "🎙️ [Pre-Match] Market open! Construct your cross-league multibet slip now."
         ]
 
