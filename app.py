@@ -11,8 +11,8 @@ ENGLISH_TEAMS = ["Manchester blue", "spurs", "A.Villa", "London blues", "Manches
 
 # Shared Platform State Engine
 state = {
-    'house_balance': 500000.0,      # Rule 2: 500,000 KSH Initial House Bank
-    'simulation_running': True,     # Rule 6: Admin switch control
+    'house_balance': 500000.0,      
+    'simulation_running': True,     
     'last_update': time.time(),
     'current_round': 1,
     'live_matches': [],
@@ -33,11 +33,9 @@ for team in ITALIAN_TEAMS + ENGLISH_TEAMS:
 
 # --- 2. CORE SIMULATION SIMULATOR ---
 def generate_fixtures():
-    """Generates live pairings and sets up the subsequent round."""
     all_teams = ITALIAN_TEAMS + ENGLISH_TEAMS
     random.shuffle(all_teams)
     
-    # Take first 4 teams for live match simulations, next 4 for pending queue
     state['live_matches'] = [
         {'id': 1, 'teams': f"{all_teams[0]} vs {all_teams[1]}", 't1': all_teams[0], 't2': all_teams[1], 'score': '0-0', 'status': 'LIVE', 'minute': 0},
         {'id': 2, 'teams': f"{all_teams[2]} vs {all_teams[3]}", 't1': all_teams[2], 't2': all_teams[3], 'score': '0-0', 'status': 'LIVE', 'minute': 0}
@@ -50,7 +48,6 @@ def generate_fixtures():
 generate_fixtures()
 
 def dynamic_engine_loop():
-    """Processes real-time increments for soccer simulations & aviator phases."""
     now = time.time()
     dt = now - state['last_update']
     state['last_update'] = now
@@ -66,7 +63,7 @@ def dynamic_engine_loop():
         if state['aviator']['multiplier'] > random.uniform(1.5, 8.0):
             state['aviator']['phase'] = 'BETTING'
             state['aviator']['start'] = now
-            state['aviator']['stakes'] = {} # House clears uncashed configurations
+            state['aviator']['stakes'] = {} 
 
     # Soccer Match Progression Engine
     if not state['simulation_running']:
@@ -74,18 +71,19 @@ def dynamic_engine_loop():
 
     for match in state['live_matches']:
         if match['status'] == 'LIVE':
-            match['minute'] += int(dt * 4) # Accelerated simulation time frames
-            if random.random() < 0.05: # Chance of scoring a goal
+            match['minute'] += int(dt * 4) 
+            if random.random() < 0.05: 
                 s1, s2 = map(int, match['score'].split('-'))
-                if random.choice([True, False]): s1 += 1
-                else s2 += 1
+                if random.choice([True, False]): 
+                    s1 += 1
+                else: 
+                    s2 += 1  # Fixed: Added the missing colon here!
                 match['score'] = f"{s1}-{s2}"
             
             if match['minute'] >= 90:
                 match['status'] = 'FINISHED'
                 finalize_match_statistics(match)
                 
-    # If all current live matches are finished, cycle to next round
     if all(m['status'] == 'FINISHED' for m in state['live_matches']):
         state['current_round'] += 1
         generate_fixtures()
@@ -115,14 +113,13 @@ def finalize_match_statistics(match):
     evaluate_user_bets(match, winner)
 
 def evaluate_user_bets(match, winner):
-    """Processes active bet tickets to settle open, won, or lost status loops."""
     for email, user in users.items():
         for bet in user.get('bets', []):
             if bet['status'] == 'OPEN' and bet['match_id'] == match['id']:
                 if bet['predicted_winner'] == winner:
                     bet['status'] = 'WON'
                     user['balance'] += bet['payout']
-                    state['house_balance'] -= bet['payout'] # Auto-deduct house bank
+                    state['house_balance'] -= bet['payout'] 
                 else:
                     bet['status'] = 'LOST'
 
@@ -136,9 +133,8 @@ def login():
         password = request.form.get('password')
         phone = request.form.get('phone')
         
-        # Rule 7: Dynamic Registration/Login routing switch
         if email not in users:
-            if phone: # Registration payload context
+            if phone: 
                 users[email] = {
                     'password': password, 'phone': phone, 'balance': 0.0,
                     'bonus': 100.0, 'bonus_locked': True, 'role': 'user', 'bets': []
@@ -159,10 +155,10 @@ def deposit():
     user = users.get(session.get('user'))
     if user:
         amount = float(request.form.get('amount', 0))
-        if amount >= 10.0: # Rule 3: 10 Bob Minimum Deposit validation check
+        if amount >= 10.0: 
             user['balance'] += amount
-            state['house_balance'] += amount # Auto-add house bank
-            if user['bonus_locked'] and amount >= 50.0: # Unlock Bonus Requirement Trigger
+            state['house_balance'] += amount 
+            if user['bonus_locked'] and amount >= 50.0: 
                 user['balance'] += user['bonus']
                 user['bonus'] = 0.0
                 user['bonus_locked'] = False
@@ -175,7 +171,7 @@ def withdraw():
     user = users.get(session.get('user'))
     if user:
         amount = float(request.form.get('amount', 0))
-        if amount >= 100.0: # Rule 3: 100 KSH Minimum Withdrawal condition check
+        if amount >= 100.0: 
             if user['balance'] >= amount:
                 user['balance'] -= amount
                 state['house_balance'] -= amount
@@ -188,7 +184,6 @@ def withdraw():
 # --- 5. ADMINISTRATION CONTROL PANEL ---
 @app.route('/admin/toggle', methods=['POST'])
 def toggle_simulation():
-    """Rule 6: Allows administrative privileges to control system clocks."""
     user = users.get(session.get('user'), {})
     if user.get('role') != 'admin': return "Forbidden", 403
     
