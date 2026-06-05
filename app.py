@@ -9,7 +9,7 @@ app = Flask(__name__)
 # --- SECURE CONFIGURATION SYSTEM ---
 app.config.update(
     SECRET_KEY='swiftpitch_super_secret_key_2026',
-    SESSION_COOKIE_SECURE=False,  # Set to True if using HTTPS production ssl
+    SESSION_COOKIE_SECURE=False,  
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
 )
@@ -57,11 +57,11 @@ state = {
 # --- LUCKY AVIATOR CRASH ENGINE CONFIGURATION ---
 aviator_game = {
     'round_id': 1,
-    'phase': 'BETTING',      # Phasing states: BETTING, FLYING, CRASHED
+    'phase': 'BETTING',      
     'phase_start_time': time.time(),
-    'betting_duration': 10,   # Seconds allowed for players to mount stakes
-    'crash_multiplier': 2.50, # Pre-calculated mathematical hard crash limit
-    'active_stakes': {}       # Holds running stakes: account_email -> float_stake
+    'betting_duration': 10,   
+    'crash_multiplier': 2.50, 
+    'active_stakes': {}       
 }
 
 # --- REAL-MONEY PAYMENTS GATEWAY INITIALIZATION PARAMETERS ---
@@ -83,9 +83,8 @@ def get_mpesa_access_token():
 # --- AVIATOR ENGINE ALGORITHMS ---
 
 def generate_provably_fair_crash_point():
-    """Generates a bounded multiplier curve using a 3% instant-house loss threshold."""
     if random.random() < 0.03:
-        return 1.00  # Instant crash upon takeoff
+        return 1.00  
     
     scale_factor = 100
     random_weight = random.randint(1, 100)
@@ -93,7 +92,6 @@ def generate_provably_fair_crash_point():
     return generated_point
 
 def update_aviator_loop():
-    """Core state machine updater driving the real-time background parameters."""
     now = time.time()
     elapsed = now - aviator_game['phase_start_time']
     
@@ -104,20 +102,18 @@ def update_aviator_loop():
             aviator_game['crash_multiplier'] = generate_provably_fair_crash_point()
             
     elif aviator_game['phase'] == 'FLYING':
-        # Exponential curve growth: 1.00 + (t^1.3) * 0.08
         current_mult = 1.00 + (elapsed ** 1.3) * 0.08
         
         if current_mult >= aviator_game['crash_multiplier']:
             aviator_game['phase'] = 'CRASHED'
             aviator_game['phase_start_time'] = now
             
-            # House retains stakes of players who failed to cash out in time
             for email, stake in aviator_game['active_stakes'].items():
                 state['company_balance'] += stake
             aviator_game['active_stakes'] = {}
             
     elif aviator_game['phase'] == 'CRASHED':
-        if elapsed >= 4:  # Provide a 4-second downtime before launching next round
+        if elapsed >= 4:  
             aviator_game['phase'] = 'BETTING'
             aviator_game['phase_start_time'] = now
             aviator_game['round_id'] += 1
@@ -239,7 +235,6 @@ def login():
             elif len(email) < 5 or len(password) < 4:
                 flash("Please enter a valid email and password (min 4 characters).")
             else:
-                # Add new player with 1,000 KSH registration starting bonus
                 users[email] = {
                     'password': password,
                     'balance': 1000.0,
@@ -249,16 +244,125 @@ def login():
                 session['user'] = email
                 return redirect(url_for('index'))
                 
-    return render_template('login.html') if False else '''
+    # --- FIXED LOGIN HTML RENDERING FOR DEPLOYMENT ---
+    return '''
     <body style="background:#0b1118; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; flex-direction:column;">
-        {% with messages = get_flashed_messages() %}
-          {% if messages %}
-            {% for msg in messages %}
-              <div style="background:#ff3333; color:white; padding:10px 20px; border-radius:4px; margin-bottom:15px; font-weight:bold;">
-                 ⚠️ {{ msg }}
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        <div id="signin-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.35);">
+            <h2 style="color:#ffcc00; margin-bottom:20px; font-size:22px; letter-spacing:1px;">⚽ SWIFTPITCH LOGIN</h2>
+            <form method="POST">
+                <input type="hidden" name="auth_action" value="signin">
+                <input type="text" name="email" placeholder="Email Address" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <input type="password" name="password" placeholder="Password" required style="width:90%; padding:11px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <button type="submit" style="width:97%; background:#00ff66; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase;">Sign In</button>
+            </form>
+            <p style="margin-top:20px; font-size:13px; color:#a0aec0;">
+                New player? <a href="#" onclick="toggleCards(true)" style="color:#00ff66; text-decoration:none; font-weight:bold;">Create Account Here →</a>
+            </p>
+        </div>
 
-        <div id="signin-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:
+        <div id="signup-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center; display:none; box-shadow: 0 4px 15px rgba(0,0,0,0.35);">
+            <h2 style="color:#00ff66; margin-bottom:20px; font-size:22px; letter-spacing:1px;">📝 PLAYER REGISTRATION</h2>
+            <p style="color:#a0aec0; font-size:12px; margin-top:-10px; margin-bottom:15px;">Get a free 1,000 KSH starter bonus instantly upon signing up!</p>
+            <form method="POST">
+                <input type="hidden" name="auth_action" value="signup">
+                <input type="email" name="email" placeholder="Enter Email Address" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <input type="password" name="password" placeholder="Choose Strong Password" required style="width:90%; padding:11px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <button type="submit" style="width:97%; background:#ffcc00; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer; text-transform:uppercase;">Register Profile</button>
+            </form>
+            <p style="margin-top:20px; font-size:13px; color:#a0aec0;">
+                Already have a profile? <a href="#" onclick="toggleCards(false)" style="color:#ffcc00; text-decoration:none; font-weight:bold;">← Go Back to Login</a>
+            </p>
+        </div>
+
+        <script>
+            function toggleCards(showSignUp) {
+                document.getElementById('signin-card').style.display = showSignUp ? 'none' : 'block';
+                document.getElementById('signup-card').style.display = showSignUp ? 'block' : 'none';
+            }
+        </script>
+    </body>
+    '''
+
+# --- DYNAMIC API ENDPOINTS FOR AVIATOR GAME INTERFACES ---
+
+@app.route('/api/aviator/state')
+def aviator_state():
+    update_aviator_loop()
+    user_email = session.get('user', '')
+    
+    elapsed = time.time() - aviator_game['phase_start_time']
+    current_mult = 1.00
+    if aviator_game['phase'] == 'FLYING':
+        current_mult = round(1.00 + (elapsed ** 1.3) * 0.08, 2)
+        
+    return jsonify({
+        'round_id': aviator_game['round_id'],
+        'phase': aviator_game['phase'],
+        'time_left': max(0, round(aviator_game['betting_duration'] - elapsed, 1)) if aviator_game['phase'] == 'BETTING' else 0,
+        'current_multiplier': current_mult,
+        'has_bet': user_email in aviator_game['active_stakes'],
+        'bet_amount': aviator_game['active_stakes'].get(user_email, 0),
+        'user_wallet': users[user_email]['balance'] if user_email in users else 0.0
+    })
+
+@app.route('/api/aviator/bet', methods=['POST'])
+def aviator_bet():
+    if 'user' not in session: 
+        return jsonify({'success': False, 'message': 'Expired session.'}), 401
+    update_aviator_loop()
+    
+    if aviator_game['phase'] != 'BETTING':
+        return jsonify({'success': False, 'message': 'Flight boarding closed! Wait for next round.'}), 400
+        
+    email = session['user']
+    try: 
+        amount = float(request.json.get('amount', 0))
+    except (ValueError, TypeError): 
+        amount = 0.0
+    
+    if amount < 10: 
+        return jsonify({'success': False, 'message': 'Minimum stake is 10 KSH.'}), 400
+    if users[email]['balance'] < amount: 
+        return jsonify({'success': False, 'message': 'Insufficient funds.'}), 400
+    
+    users[email]['balance'] -= amount
+    aviator_game['active_stakes'][email] = amount
+    return jsonify({'success': True, 'wallet': users[email]['balance']})
+
+@app.route('/api/aviator/cashout', methods=['POST'])
+def aviator_cashout():
+    if 'user' not in session: 
+        return jsonify({'success': False, 'message': 'Expired session.'}), 401
+        
+    update_aviator_loop()
+    
+    data = request.get_json() or {}
+    client_round_id = data.get('round_id')
+    
+    if aviator_game['phase'] != 'FLYING':
+        return jsonify({'success': False, 'message': 'Too late! The plane already crashed.'}), 400
+        
+    if client_round_id and int(client_round_id) != aviator_game['round_id']:
+        return jsonify({'success': False, 'message': 'Round expired! Processing next flight.'}), 400
+        
+    email = session['user']
+    if email not in aviator_game['active_stakes']:
+        return jsonify({'success': False, 'message': 'No active stake found for this flight.'}), 400
+        
+    elapsed = time.time() - aviator_game['phase_start_time']
+    current_mult = round(1.00 + (elapsed ** 1.3) * 0.08, 2)
+    
+    if current_mult >= aviator_game['crash_multiplier']:
+        return jsonify({'success': False, 'message': 'Too late! The plane already flew away.'}), 400
+        
+    stake = aviator_game['active_stakes'].pop(email)
+    winnings = round(stake * current_mult, 2)
+    
+    users[email]['balance'] += winnings
+    state['company_balance'] -= (winnings - stake)
+    
+    return jsonify({
+        'success': True, 
+        'winnings': winnings, 
+        'multiplier': current_mult, 
+        'wallet': users[email]
