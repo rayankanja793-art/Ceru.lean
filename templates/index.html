@@ -7,53 +7,58 @@
     <style>
         body { background: #0b1118; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
         .nav { display: flex; justify-content: space-between; background: #121b26; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr 300px; gap: 20px; }
         .card { background: #121b26; padding: 20px; border-radius: 8px; border: 1px solid #1c2a39; }
         .aviator-box { text-align: center; border: 2px solid #ffcc00; }
         .multiplier { font-size: 48px; font-weight: bold; color: #ffcc00; margin: 20px 0; }
-        input, button { padding: 10px; border-radius: 4px; border: none; margin: 5px; }
-        button { cursor: pointer; font-weight: bold; background: #00ff66; }
-        .error { color: #ff3333; }
+        input, button, select { padding: 10px; border-radius: 4px; border: none; margin: 5px; width: 90%; }
+        button { cursor: pointer; font-weight: bold; background: #00ff66; color: black; }
+        .match-row { display: flex; justify-content: space-between; background: #1c2a39; padding: 10px; margin-bottom: 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div class="nav">
     <div><strong>SWIFTPITCH</strong> | Wallet: <span id="user-balance">0</span> KSH</div>
-    <div>House Balance: <span id="house-balance">0</span> KSH | <a href="/logout" style="color:red;">Logout</a></div>
+    <div>House Balance: <span id="house-balance">0</span> KSH | <a href="/logout" style="color:#ff3333;">Logout</a></div>
 </div>
 
 <div class="grid">
-    <div>
-        <div class="card aviator-box">
-            <h2>✈️ Lucky Aviator</h2>
-            <div class="multiplier" id="mult-display">1.00x</div>
-            <div id="status-display">Waiting...</div>
-            <br>
-            <input type="number" id="bet-amount" placeholder="Stake Amount" value="100">
-            <button onclick="placeBet()" id="bet-btn">PLACE BET</button>
-            <button onclick="cashOut()" id="cashout-btn" style="background:red; display:none;">CASH OUT</button>
-        </div>
+    <div class="card aviator-box">
+        <h2>✈️ Lucky Aviator</h2>
+        <div class="multiplier" id="mult-display">1.00x</div>
+        <div id="status-display">Waiting...</div>
+        <br>
+        <input type="number" id="bet-amount" placeholder="Stake Amount" value="100">
+        <button onclick="placeBet()" id="bet-btn">PLACE BET</button>
+        <button onclick="cashOut()" id="cashout-btn" style="background:#ff3333; color:white; display:none;">CASH OUT</button>
+        <p style="font-size:12px; color:#888;">Max Win: 300,000 KSH</p>
+    </div>
+    
+    <div class="card">
+        <h3>⚽ Live Matches</h3>
+        <div id="matches-list">Simulating...</div>
+        <hr style="border-color:#1c2a39; margin: 20px 0;">
         
-        <div class="card" style="margin-top:20px;">
-            <h3>⚽ Live Matches</h3>
-            <div id="matches-list">Loading matches...</div>
-        </div>
+        <h3>📝 Build Multi-Bet</h3>
+        <select><option>Roma to Win (1.5x)</option><option>Arsenal to Win (1.8x)</option></select>
+        <select><option>Juventus to Win (2.1x)</option><option>Over 2.5 Goals (1.4x)</option></select>
+        <input type="number" placeholder="Stake">
+        <button style="background: #ffcc00;">Place Multi-Bet</button>
     </div>
 
-    <div>
-        <div class="card">
-            <h3>💳 Account</h3>
-            <form action="/deposit" method="POST">
-                <input type="number" name="amount" placeholder="Amount" required>
-                <button type="submit" style="background:#00ccff;">DEPOSIT</button>
-            </form>
-        </div>
+    <div class="card">
+        <h3>💳 Banking</h3>
+        <form action="/banking" method="POST">
+            <input type="number" name="amount" placeholder="Amount (KSH)" required>
+            <button type="submit" name="action" value="deposit" style="background:#00ccff;">DEPOSIT</button>
+            <button type="submit" name="action" value="withdraw" style="background:#ff9900;">WITHDRAW</button>
+        </form>
     </div>
 </div>
 
 <script>
-    // 1. Polling Function (Updates Data every 500ms)
+    // Polling Function to keep Aviator and Matches moving automatically
     setInterval(() => {
         fetch('/api/state')
         .then(response => response.json())
@@ -61,6 +66,7 @@
             document.getElementById('user-balance').innerText = data.user_balance.toFixed(2);
             document.getElementById('house-balance').innerText = data.house_balance.toFixed(2);
             
+            // Aviator Updates
             const aviator = data.aviator;
             document.getElementById('mult-display').innerText = aviator.multiplier.toFixed(2) + 'x';
             document.getElementById('status-display').innerText = aviator.phase;
@@ -72,28 +78,31 @@
                 document.getElementById('bet-btn').style.display = 'inline-block';
                 document.getElementById('cashout-btn').style.display = 'none';
             }
+
+            // Continuous Match Updates
+            let matchesHTML = '';
+            data.live_matches.forEach(m => {
+                matchesHTML += `<div class="match-row">
+                    <span>${m.match}</span>
+                    <strong style="color:#00ff66;">${m.score}</strong>
+                    <span style="color:#888;">${m.minute}'</span>
+                </div>`;
+            });
+            document.getElementById('matches-list').innerHTML = matchesHTML;
         });
     }, 500);
 
-    // 2. Betting Actions
     function placeBet() {
-        const stake = document.getElementById('bet-amount').value;
         fetch('/api/aviator/bet', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({stake: stake})
-        }).then(r => r.json()).then(d => {
-            if(d.success) alert("Bet Placed!");
-            else alert("Balance too low or Game not in Betting phase.");
-        });
+            body: JSON.stringify({stake: document.getElementById('bet-amount').value})
+        }).then(r => r.json()).then(d => { if(!d.success) alert("Action failed."); });
     }
 
     function cashOut() {
         fetch('/api/aviator/cashout', { method: 'POST' })
-        .then(r => r.json()).then(d => {
-            if(d.success) alert("Cashed out: " + d.winnings);
-            else alert("Cashout failed.");
-        });
+        .then(r => r.json()).then(d => { if(d.success) alert("Won: " + d.winnings + " KSH"); });
     }
 </script>
 </body>
