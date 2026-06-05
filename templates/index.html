@@ -5,247 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SwiftPitch - Virtual Gaming Dashboard</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #0b1118; color: #f5f7fa; margin: 0; padding: 15px; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #121b26; padding: 12px 20px; border-radius: 8px; border-bottom: 3px solid #ffcc00; margin-bottom: 20px; }
-        .logo { font-size: 22px; font-weight: bold; color: #ffcc00; text-transform: uppercase; }
-        .main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
-        .card { background-color: #121b26; border-radius: 8px; padding: 18px; border: 1px solid #1c2a39; margin-bottom: 15px; }
+        body { 
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; 
+            background-color: #0b1118; 
+            color: #f5f7fa; 
+            margin: 0; 
+            padding: 15px; 
+        }
+        .navbar { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background-color: #121b26; 
+            padding: 12px 20px; 
+            border-radius: 8px; 
+            border-bottom: 3px solid #ffcc00; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+        }
+        .logo { 
+            font-size: 22px; 
+            font-weight: bold; 
+            color: #ffcc00; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+        }
+        .main-layout { 
+            display: grid; 
+            grid-template-columns: 1fr 340px; 
+            gap: 20px; 
+        }
+        .card { 
+            background-color: #121b26; 
+            border-radius: 8px; 
+            padding: 18px; 
+            border: 1px solid #1c2a39; 
+            margin-bottom: 15px; 
+        }
         
-        .lane-tabs { display: flex; gap: 10px; margin-bottom: 15px; }
-        .lane-btn { background: #1c2a39; border: 2px solid #1c2a39; color: #a0aec0; padding: 12px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; flex: 1; text-transform: uppercase; font-size: 13px; }
-        .lane-btn.active-lane { border-color: #ffcc00; color: #ffcc00; background: #121b26; }
-        .lane-btn.aviator-lane-btn { border-color: #ff3333; color: #ff3333; }
-        .lane-btn.aviator-lane-btn.active-lane { background: #1a0f11; border-color: #ff3333; color: #ff3333; box-shadow: 0 0 10px rgba(255,51,51,0.2); }
-
-        /* Aviator Game Layout Components */
-        #aviator-arena { display: none; background: #121b26; border: 2px solid #ff3333; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 25px; }
-        .aviator-canvas-wrapper { position: relative; background: #070b10; border-radius: 6px; overflow: hidden; margin-bottom: 15px; border: 1px solid #1c2a39; }
-        #aviatorCanvas { width: 100%; height: 260px; display: block; }
-        .live-multiplier-counter { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; font-weight: 900; color: #ffffff; text-shadow: 0 4px 12px rgba(0,0,0,0.8); font-family: monospace; }
-        .aviator-controls { display: flex; justify-content: center; gap: 15px; background: #0b1118; padding: 15px; border-radius: 6px; border: 1px solid #1c2a39; }
-        .aviator-input { background: #121b26; border: 1px solid #1c2a39; color: white; padding: 12px; font-size: 16px; border-radius: 4px; font-weight: bold; width: 120px; text-align: center; }
-        .aviator-btn { background: #ff3333; color: white; font-size: 16px; font-weight: bold; padding: 12px 40px; border: none; border-radius: 4px; cursor: pointer; text-transform: uppercase; min-width: 180px; }
-        .aviator-btn.cashout-active { background: #ffcc00; color: black; }
-
-        .fix-row { display: grid; grid-template-columns: 1fr 180px; align-items: center; padding: 10px; border-bottom: 1px solid #1c2a39; }
-        .odd-btn { background-color: #1c2a39; border: 1px solid #ffcc00; color: #ffcc00; padding: 6px; font-size: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; flex: 1; text-align: center; }
-        .btn-action { width: 100%; background: #00ff66; color: #000; padding: 12px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; text-transform: uppercase; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th, td { padding: 8px; border-bottom: 1px solid #1c2a39; }
-    </style>
-</head>
-<body>
-
-    <div class="navbar">
-        <div class="logo">⚽ SWIFTPITCH</div>
-        <div style="font-weight: bold; color:#a0aec0;">
-            Wallet Balance: <span style="color: #00ff66;" id="live-wallet">{{ "{:,.2f}".format(user.balance) }} KSH</span>
-            <a href="/logout" style="margin-left: 15px; color: #ffcc00; text-decoration: none;">Logout</a>
-        </div>
-    </div>
-
-    <!-- MAIN SELECTION NAVIGATION TABS -->
-    <div class="lane-tabs">
-        <button class="lane-btn aviator-lane-btn" id="tab-av" onclick="switchLane('AVIATOR')">✈️ Lucky Aviator Arena</button>
-        <button class="lane-btn active-lane" id="tab-ita" onclick="switchLane('ITALIAN')">🇮🇹 Italian Serie A Lane</button>
-        <button class="lane-btn" id="tab-eng" onclick="switchLane('ENGLISH')">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier Lane</button>
-    </div>
-
-    <div class="main-layout">
-        <div>
-            <!-- AVIATOR REAL-TIME GAME ROOM INTERFACE -->
-            <div id="aviator-arena">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h3 style="margin:0; color:#ff3333; font-size:18px;">✈️ AVIATOR REAL-TIME MULTIPLIER FLIGHT</h3>
-                    <div id="aviator-round-status" style="font-size:13px; background:#1c2a39; padding:4px 10px; border-radius:4px; color:#ffcc00;">Connecting...</div>
-                </div>
-                
-                <div class="aviator-canvas-wrapper">
-                    <canvas id="aviatorCanvas" width="800" height="260"></canvas>
-                    <div class="live-multiplier-counter" id="mult-counter-text">1.00x</div>
-                </div>
-
-                <div class="aviator-controls">
-                    <div>
-                        <span style="font-size:11px; color:#a0aec0; display:block; margin-bottom:4px; text-align:left;">Bet Stake (KSH):</span>
-                        <input type="number" id="aviator-stake-input" class="aviator-input" value="50" min="10">
-                    </div>
-                    <div style="display:flex; align-items: flex-end;">
-                        <button id="aviator-action-btn" class="aviator-btn" onclick="handleAviatorAction()">Place Stake</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- FOOTBALL ZONE PANELS -->
-            <div id="sportsbook-zone">
-                <div class="card">
-                    <h3 style="margin-top: 0; color:#a0aec0;"><span id="lane-title-label">Italian</span> Matches</h3>
-                    <div id="fixtures-container"></div>
-                </div>
-                <div class="card">
-                    <h3 style="margin-top: 0; color:#ffcc00;"><span id="table-title-label">Italian</span> League Table</h3>
-                    <table>
-                        <thead><tr><th>Pos</th><th>Club Name</th><th>Points</th></tr></thead>
-                        <tbody id="standings-body"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- RIGHT SIDEBAR (SHARED CAPITALS DEPOSIT) -->
-        <div>
-            <div class="card" style="border-color: #ff3333;">
-                <h3 style="margin-top: 0; color:#ff3333;">💳 Instant M-Pesa Funding</h3>
-                <form action="/deposit" method="POST">
-                    <input type="number" name="amount" min="10" placeholder="Amount in KSH" required style="width:90%; background:#0b1118; border:1px solid #1c2a39; padding:10px; color:white; border-radius:4px; margin-bottom:10px;">
-                    <button type="submit" class="btn-action" style="background:#ff3333; color:white;">Deposit Cash</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let currentLane = "ITALIAN";
-        const canvas = document.getElementById('aviatorCanvas');
-        const ctx = canvas.getContext('2d');
-        let planeX = 50, planeY = 220;
-
-        function switchLane(laneName) {
-            currentLane = laneName;
-            document.getElementById('tab-av').classList.toggle('active-lane', laneName === 'AVIATOR');
-            document.getElementById('tab-ita').classList.toggle('active-lane', laneName === 'ITALIAN');
-            document.getElementById('tab-eng').classList.toggle('active-lane', laneName === 'ENGLISH');
-            
-            if (laneName === 'AVIATOR') {
-                document.getElementById('aviator-arena').style.display = 'block';
-                document.getElementById('sportsbook-zone').style.display = 'none';
-            } else {
-                document.getElementById('aviator-arena').style.display = 'none';
-                document.getElementById('sportsbook-zone').style.display = 'block';
-                document.getElementById('lane-title-label').innerText = laneName === 'ITALIAN' ? 'Italian' : 'English';
-            }
+        /* NAVIGATION TABS SYSTEMS */
+        .lane-tabs { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+        }
+        .lane-btn { 
+            background: #1c2a39; 
+            border: 2px solid #1c2a39; 
+            color: #a0aec0; 
+            padding: 12px 20px; 
+            font-weight: bold; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            flex: 1; 
+            text-transform: uppercase; 
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+        .lane-btn.active-lane { 
+            border-color: #ffcc00; 
+            color: #ffcc00; 
+            background: #121b26; 
+        }
+        .lane-btn.aviator-lane-btn { 
+            border-color: #ff3333; 
+            color: #ff3333; 
+        }
+        .lane-btn.aviator-lane-btn.active-lane { 
+            background: #1a0f11; 
+            border-color: #ff3333; 
+            color: #ff3333; 
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.25); 
         }
 
-        // Real-Time Canvas Animator for the Plane Curve
-        function drawAviatorCanvas(phase, multiplier) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw grid lines background
-            ctx.strokeStyle = '#16222f';
-            ctx.lineWidth = 1;
-            for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
-            for(let j=0; j<canvas.height; j+=40) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(canvas.width,j); ctx.stroke(); }
-
-            if (phase === 'BETTING') {
-                document.getElementById('mult-counter-text').style.color = '#ffcc00';
-                document.getElementById('mult-counter-text').innerText = "TAKE OFF IN PROGRESS";
-                planeX = 50; planeY = 220;
-            } else if (phase === 'FLYING') {
-                document.getElementById('mult-counter-text').style.color = '#ffffff';
-                document.getElementById('mult-counter-text').innerText = multiplier.toFixed(2) + 'x';
-                
-                // Grow vector lines organically based on multiplier scale
-                planeX = Math.min(canvas.width - 60, 50 + (multiplier - 1) * 70);
-                planeY = Math.max(40, 220 - (multiplier - 1) * 35);
-
-                // Draw red growth wave trail
-                ctx.strokeStyle = '#ff3333';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.moveTo(50, 220);
-                ctx.quadraticCurveTo(planeX / 2 + 25, 220, planeX, planeY);
-                ctx.stroke();
-            } else if (phase === 'CRASHED') {
-                document.getElementById('mult-counter-text').style.color = '#ff3333';
-                document.getElementById('mult-counter-text').innerText = "FLEW AWAY!";
-            }
-
-            // Draw the Aircraft point vector circle representation
-            ctx.fillStyle = '#ff3333';
-            ctx.beginPath();
-            ctx.arc(planeX, planeY, 10, 0, 2 * Math.PI);
-            ctx.fill();
+        /* LUCKY AVIATOR MULTIPLIER CORE COMPONENTS */
+        #aviator-arena { 
+            display: none; 
+            background: #121b26; 
+            border: 2px solid #ff3333; 
+            border-radius: 8px; 
+            padding: 20px; 
+            text-align: center; 
+            margin-bottom: 25px; 
+            box-shadow: 0 4px 20px rgba(255, 51, 51, 0.1);
         }
-
-        function handleAviatorAction() {
-            const btn = document.getElementById('aviator-action-btn');
-            const amt = document.getElementById('aviator-stake-input').value;
-
-            if (btn.innerText === "PLACE STAKE") {
-                fetch('/api/aviator/bet', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ amount: amt })
-                }).then(res => res.json()).then(data => {
-                    if (data.success) {
-                        btn.innerText = "WAITING FOR FLIGHT";
-                        btn.style.background = '#1c2a39';
-                        document.getElementById('live-wallet').innerText = data.wallet.toLocaleString() + ' KSH';
-                    } else alert(data.message);
-                });
-            } else if (btn.innerText === "CASH OUT") {
-                fetch('/api/aviator/cashout', { method: 'POST' })
-                .then(res => res.json()).then(data => {
-                    if (data.success) {
-                        alert(`💥 CASHED OUT SUCCESSFULLY! Won: ${data.winnings} KSH at ${data.multiplier}x`);
-                        btn.innerText = "PLACE STAKE";
-                        btn.style.background = '#ff3333';
-                        document.getElementById('live-wallet').innerText = data.wallet.toLocaleString() + ' KSH';
-                    } else alert(data.message);
-                });
-            }
+        .aviator-canvas-wrapper { 
+            position: relative; 
+            background: #070b10; 
+            border-radius: 6px; 
+            overflow: hidden; 
+            margin-bottom: 15px; 
+            border: 1px solid #1c2a39; 
         }
-
-        // Fast engine execution synchronize loop tracker (Runs every 200 milliseconds)
-        setInterval(function() {
-            fetch('/api/aviator/state')
-            .then(res => res.json())
-            .then(data => {
-                const btn = document.getElementById('aviator-action-btn');
-                document.getElementById('live-wallet').innerText = data.user_wallet.toLocaleString() + ' KSH';
-                
-                if (data.phase === 'BETTING') {
-                    document.getElementById('aviator-round-status').innerText = `Next round starts in: ${data.time_left}s`;
-                    if (!data.has_bet) {
-                        btn.innerText = "PLACE STAKE";
-                        btn.style.background = '#ff3333';
-                        btn.disabled = false;
-                    }
-                } else if (data.phase === 'FLYING') {
-                    document.getElementById('aviator-round-status').innerText = "🔴 FLIGHT CURRENTLY IN AIR";
-                    if (data.has_bet) {
-                        let potentialWinnings = (data.bet_amount * data.current_multiplier).toFixed(2);
-                        btn.innerText = `CASH OUT (${potentialWinnings} KSH)`;
-                        btn.style.background = '#ffcc00';
-                        btn.style.color = 'black';
-                    } else if (btn.innerText !== "PLACE STAKE") {
-                        btn.innerText = "BOARDING CLOSED";
-                        btn.disabled = true;
-                        btn.style.background = '#1c2a39';
-                        btn.style.color = '#a0aec0';
-                    }
-                } else if (data.phase === 'CRASHED') {
-                    document.getElementById('aviator-round-status').innerText = "💥 PLANE DISAPPEARED";
-                    btn.innerText = "PLACE STAKE";
-                    btn.style.background = '#ff3333';
-                    btn.disabled = true;
-                }
-                drawAviatorCanvas(data.phase, data.current_multiplier);
-            });
-        }, 200);
-
-        // Core Sportsbook loop fallback
-        setInterval(function() {
-            if (currentLane === 'AVIATOR') return;
-            fetch('/api/state').then(res => res.json()).then(data => {
-                let fixtures = currentLane === 'ITALIAN' ? data.italian_fixtures : data.english_fixtures;
-                let html = '';
-                fixtures.forEach(f => {
-                    html += `<div class="fix-row"><div><strong>${f.home}</strong> vs <strong>${f.away}</strong></div><div>${f.home_score} - ${f.away_score}</div></div>`;
-                });
-                document.getElementById('fixtures-container').innerHTML = html;
-            });
-        }, 3000);
-    </script>
-</body>
-</html>
+        #aviatorCanvas { 
+            width: 100%; 
+            height
