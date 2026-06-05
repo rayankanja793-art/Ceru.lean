@@ -244,8 +244,14 @@ def login():
                 session['user'] = email
                 return redirect(url_for('index'))
                 
-    # --- FIXED LOGIN HTML RENDERING FOR DEPLOYMENT ---
+    # --- CLEANED UP INLINE STRING RENDERING TO FIX DEPLOYMENT CRASH ---
     return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>SwiftPitch Login</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
     <body style="background:#0b1118; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; flex-direction:column;">
         <div id="signin-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.35);">
             <h2 style="color:#ffcc00; margin-bottom:20px; font-size:22px; letter-spacing:1px;">⚽ SWIFTPITCH LOGIN</h2>
@@ -281,6 +287,7 @@ def login():
             }
         </script>
     </body>
+    </html>
     '''
 
 # --- DYNAMIC API ENDPOINTS FOR AVIATOR GAME INTERFACES ---
@@ -365,4 +372,74 @@ def aviator_cashout():
         'success': True, 
         'winnings': winnings, 
         'multiplier': current_mult, 
-        'wallet': users[email]
+        'wallet': users[email]['balance']
+    })
+
+# --- TRADITIONAL SPORTSBOOK INTERACTION LAYERS ---
+
+@app.route('/place-multibet', methods=['POST'])
+def place_multibet():
+    if 'user' not in session: 
+        return jsonify({'success': False}), 401
+    current_state = get_current_match_state()
+    if current_state['phase'] != 'BETTING': 
+        return jsonify({'success': False, 'message': 'Market closed.'}), 400
+        
+    data = request.get_json() or {}
+    selections = data.get('selections', [])
+    try:
+        stake = float(data.get('stake', 0))
+    except ValueError:
+        stake = 0.0
+        
+    user = users[session['user']]
+    if user['balance'] < stake or stake < 10: 
+        return jsonify({'success': False, 'message': 'Invalid stake or balance.'}), 400
+    
+    user['balance'] -= stake
+    placed_bets.append({
+        'id': f"t_{int(time.time())}", 
+        'email': session['user'], 
+        'round': current_state['round'], 
+        'season': current_state['season'], 
+        'selections': selections, 
+        'stake': stake, 
+        'total_odds': 2.50, 
+        'status': 'PENDING'
+    })
+    return jsonify({'success': True, 'message': 'Multibet verified!'})
+
+@app.route('/deposit', methods=['POST'])
+def deposit():
+    if 'user' not in session: 
+        return redirect(url_for('login'))
+    try:
+        amount = int(float(request.form.get('amount', 0)))
+    except ValueError:
+        amount = 0
+    if amount >= 10: 
+        users[session['user']]['balance'] += amount
+    return redirect(url_for('index'))
+
+@app.route('/api/state')
+def get_state():
+    cs = get_current_match_state()
+    return jsonify({
+        'phase': cs['phase'], 
+        'time': cs['time'], 
+        'round': cs['round'], 
+        'season': cs['season'], 
+        'italian_fixtures': cs['italian_fixtures'], 
+        'english_fixtures': cs['english_fixtures'], 
+        'standings_ita': get_league_standings(cs['round'], ITALIAN_TEAMS, 111), 
+        'standings_eng': get_league_standings(cs['round'], ENGLISH_TEAMS, 222), 
+        'logs': [f"[System] Live matches cycling matching parameters."]
+    })
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
