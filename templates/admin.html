@@ -3,118 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Admin Panel</title>
+    <title>SwiftPitch - Admin Control Deck</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #0c131c; color: white; padding: 20px; margin: 0; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff3333; padding-bottom: 15px; margin-bottom: 20px; }
-        h1 { color: #ff3333; margin: 0; font-size: 24px; }
-        .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .card { background-color: #16222f; padding: 20px; border-radius: 8px; border: 1px solid #ff3333; }
-        .btn { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-start { background-color: #00ff66; color: black; }
+        body { background-color: #0b1118; color: #ffffff; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #1a1515; padding: 15px 25px; border-radius: 10px; border: 1px solid #3a1c1c; margin-bottom: 25px; }
+        .logo { font-size: 22px; font-weight: bold; color: #ff3333; letter-spacing: 1px; }
+        .nav-links a { color: #88a0b0; text-decoration: none; font-weight: bold; margin-left: 20px; }
+        .nav-links a:hover { color: #ffffff; }
+        
+        .admin-grid { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
+        @media (max-width: 1000px) { .admin-grid { grid-template-columns: 1fr; } }
+        
+        .card { background-color: #121b26; border-radius: 10px; padding: 25px; border: 1px solid #1c2a39; margin-bottom: 20px; }
+        h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 10px; color: #ff3333; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* Master Stats Displays */
+        .stat-box { background-color: #0b1118; border: 1px solid #1c2a39; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        .stat-value { font-size: 36px; font-weight: bold; font-family: monospace; }
+        .house-green { color: #00ff66; }
+        
+        /* Control Toggles */
+        .control-panel { display: flex; flex-direction: column; gap: 15px; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s, transform 0.1s; }
+        button:active { transform: scale(0.99); }
+        .btn-start { background-color: #00ff66; color: #0b1118; }
+        .btn-start:hover { background-color: #00cc55; }
         .btn-stop { background-color: #ff3333; color: white; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 15px; text-align: left; }
-        th, td { padding: 10px; border-bottom: 1px solid #223245; vertical-align: top; }
-        th { background-color: #0c131c; color: #a0aec0; }
-        .badge { padding: 3px 6px; border-radius: 3px; font-weight: bold; font-size: 11px; }
-        .leg-indicator { background: #0c131c; padding: 4px 8px; border-radius: 4px; display: inline-block; margin: 2px; font-size: 11px; }
+        .btn-stop:hover { background-color: #cc2222; }
+        
+        /* Live Engine Logs Terminal */
+        .terminal-box { background-color: #05080c; border: 1px solid #1c2a39; border-radius: 6px; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #00ff66; max-height: 400px; overflow-y: auto; line-height: 1.6; }
+        .status-pill { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+        .pill-running { background-color: rgba(0, 255, 102, 0.1); color: #00ff66; border: 1px solid #00ff66; }
+        .pill-stopped { background-color: rgba(255, 51, 51, 0.1); color: #ff3333; border: 1px solid #ff3333; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>🛠️ SWIFTPITCH ADMINISTRATION PANEL</h1>
-            <a href="/" style="color:#ffcc00; text-decoration:none; font-weight:bold;">← Return To Dashboard</a>
-        </div>
+<div class="navbar">
+    <div class="logo">🛡️ SWIFTPITCH ADMIN PANEL</div>
+    <div class="nav-links">
+        <a href="/">Go To Dashboard</a>
+        <a href="/logout" style="color: #ff3333;">Logout</a>
+    </div>
+</div>
 
-        <div class="grid-stats">
-            <div class="card">
-                <h2>Simulation Engine Controls</h2>
-                <p>Status: 
-                    {% if state.is_running %}
-                        <strong style="color:#00ff66;">● RUNNING AUTOMATICALLY</strong>
-                    {% else %}
-                        <strong style="color:#ff3333;">■ PAUSED / FROZEN</strong>
-                    {% endif %}
-                </p>
-                <p>Season Iteration: <strong>Season {{ state.season }}</strong> | Active Round: <strong>Round #{{ state.round }}</strong></p>
-                
-                <form method="POST" action="/admin" style="margin-top: 15px;">
-                    {% if state.is_running %}
-                        <button type="submit" name="action" value="stop" class="btn btn-stop">🛑 Force Stop & Pause Engine</button>
-                    {% else %}
-                        <button type="submit" name="action" value="start" class="btn btn-start">▶ Start / Resume Engine Simulation</button>
-                    {% endif %}
-                </form>
+<div class="admin-grid">
+    
+    <div>
+        <div class="card">
+            <h3>⚙️ Simulation Engine Management</h3>
+            <p style="color: #88a0b0; font-size: 14px; margin-bottom: 20px;">
+                Use the switches below to pause or resume the background match simulator loops. Pausing halts match times, scoring probabilities, and round sequences globally.
+            </p>
+            
+            <div style="margin-bottom: 20px;">
+                <span>Engine Status: </span>
+                <span id="engine-status-pill" class="status-pill pill-running">RUNNING</span>
             </div>
 
-            <div class="card" style="border-color: #00ff66;">
-                <h2>SwiftPitch Financial Vault</h2>
-                <p style="color:#a0aec0; font-size:13px; margin-top: 0;">Monitors the absolute profit margins generated from house operations.</p>
-                <p style="font-size: 14px; margin-bottom: 5px;">House Capital Account Balance:</p>
-                <p style="font-size: 32px; font-weight: bold; color: #00ff66; margin: 0;" id="admin-vault-display">
-                    {{ "{:,.2f}".format(company_balance) }} KSH
-                </p>
-                <span style="font-size:11px; color:#a0aec0;">*Updates dynamically at the end of each round.</span>
+            <div class="control-panel">
+                <button class="btn-start" onclick="setSimulationState(true)">▶ START MASTER SIMULATION</button>
+                <button class="btn-stop" onclick="setSimulationState(false)">⏸ STOP MASTER SIMULATION</button>
             </div>
         </div>
 
-        <div class="card" style="border-color: #223245;">
-            <h2>User Activity & Placed Multibet Tickets Tracker</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Ticket ID</th>
-                        <th>User Account</th>
-                        <th>Round Reference</th>
-                        <th>Accumulator Selections (Legs)</th>
-                        <th>Total Odds</th>
-                        <th>Stake Amount</th>
-                        <th>Outcome</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for bet in total_bets %}
-                    <tr>
-                        <td><code style="color:#a0aec0;">{{ bet.id }}</code></td>
-                        <td><strong>{{ bet.email }}</strong></td>
-                        <td>S{{ bet.season }} | R#{{ bet.round }}</td>
-                        <td>
-                            {% for leg in bet.selections %}
-                            <div class="leg-indicator">
-                                <span>{{ leg.home }} v {{ leg.away }}</span> -> 
-                                <strong style="color:#ffcc00;">{{ leg.market }}</strong> (${{ leg.odds }})
-                            </div>
-                            {% endfor %}
-                        </td>
-                        <td style="color:#ffcc00; font-weight:bold;">x{{ bet.total_odds }}</td>
-                        <td>{{ bet.stake }} KSH</td>
-                        <td>
-                            {% if bet.status == 'PENDING' %}
-                                <span class="badge" style="background: rgba(255,204,0,0.2); color:#ffcc00;">PENDING</span>
-                            {% elif bet.status == 'WON' %}
-                                <span class="badge" style="background: rgba(0,255,102,0.2); color:#00ff66;">WON</span>
-                            {% else %}
-                                <span class="badge" style="background: rgba(255,51,51,0.2); color:#ff3333;">LOST</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card">
+            <h3>📊 Live Match Activity Logs</h3>
+            <div class="terminal-box" id="admin-match-logs">
+                [SYSTEM DETECTED]: Establishing communication loop links...
+            </div>
         </div>
     </div>
 
-    <script>
-        setInterval(function() {
-            fetch('/api/state')
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById('admin-vault-display').innerText = data.company_balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' KSH';
-                });
-        }, 1500);
-    </script>
+    <div>
+        <div class="card">
+            <h3>💰 Vault Liquidity Ledger</h3>
+            
+            <div class="stat-box">
+                <div style="color: #88a0b0; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Company Vault Balance</div>
+                <div class="stat-value house-green"><span id="admin-house-balance">500000.00</span> KSH</div>
+            </div>
+            
+            <p style="font-size: 12px; color: #88a0b0; margin: 10px 0 0 0; line-height: 1.4;">
+                💡 This balance tracks automated additions from consumer user deposits / lost wagers and handles wagers extracted from won betslips or aviator cashout milestones automatically.
+            </p>
+        </div>
+        
+        <div class="card">
+            <h3>🔒 Security Protocols</h3>
+            <p style="font-size: 13px; color: #88a0b0; line-height: 1.5; margin: 0;">
+                Regular user profiles attempting manual route configurations toward `/admin` are systematically dropped with an HTTP 403 authorization error payload code block response.
+            </p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // System thread tracking loop executing updates every 500ms
+    setInterval(() => {
+        fetch('/api/state')
+        .then(res => res.json())
+        .then(data => {
+            // Update global house balance parameters
+            document.getElementById('admin-house-balance').innerText = data.house_balance.toFixed(2);
+            
+            // Dynamic pill states 
+            const statusPill = document.getElementById('engine-status-pill');
+            if (data.simulation_running) {
+                statusPill.innerText = "RUNNING";
+                statusPill.className = "status-pill pill-running";
+            } else {
+                statusPill.innerText = "PAUSED / STOPPED";
+                statusPill.className = "status-pill pill-stopped";
+            }
+
+            // Sync master match activity log feeds
+            if (data.match_logs.length > 0) {
+                document.getElementById('admin-match-logs').innerHTML = data.match_logs.reverse().join('<br>');
+            } else {
+                document.getElementById('admin-match-logs').innerText = "[SYSTEM LOGS]: No matches finalized in this server cycle session yet.";
+            }
+        });
+    }, 500);
+
+    // Administrative Command Hook payload trigger
+    function setSimulationState(runFlag) {
+        fetch('/admin/toggle', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ run: runFlag })
+        })
+        .then(res => res.json())
+        .then(d => {
+            if (d.success) {
+                alert("Administrative command confirmed: Engine execution state toggled.");
+            }
+        });
+    }
+</script>
 </body>
 </html>
