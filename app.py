@@ -49,7 +49,7 @@ ENGLISH_TEAMS = [
 state = {
     'is_running': True,
     'start_time': time.time(),
-    'company_balance': 250000.0,  # Displays on Admin Panel and updates automatically
+    'company_balance': 250000.0,  
     'manual_italian_results': None,  
     'manual_english_results': None,
     'last_settled_round': 0
@@ -86,7 +86,7 @@ def update_aviator_loop():
             aviator_game['phase'] = 'CRASHED'
             aviator_game['phase_start_time'] = now
             for email, stake in aviator_game['active_stakes'].items():
-                state['company_balance'] += stake # Lost bet goes to company bank
+                state['company_balance'] += stake
             aviator_game['active_stakes'] = {}
     elif aviator_game['phase'] == 'CRASHED' and elapsed >= 4:
         aviator_game['phase'] = 'BETTING'
@@ -104,7 +104,6 @@ def generate_fixtures_for_round(round_num, team_list, seed_offset, override_scor
         home = shuffled_teams[i]
         away = shuffled_teams[i+1]
         
-        # Consistent Odds based on team seeding positions
         home_odds = round(random.uniform(1.40, 3.20), 2)
         draw_odds = round(random.uniform(2.80, 3.60), 2)
         away_odds = round(random.uniform(1.80, 4.50), 2)
@@ -125,7 +124,7 @@ def generate_fixtures_for_round(round_num, team_list, seed_offset, override_scor
     return fixtures
 
 def get_current_match_state():
-    total_loop_time = 90  # 45s betting window, 45s match rendering window
+    total_loop_time = 90  
     elapsed = int(time.time() - state['start_time'])
     
     current_round = (elapsed // total_loop_time) + 1
@@ -141,7 +140,6 @@ def get_current_match_state():
     italian_fixtures = generate_fixtures_for_round(current_round, ITALIAN_TEAMS, 111, state['manual_italian_results'])
     english_fixtures = generate_fixtures_for_round(current_round, ENGLISH_TEAMS, 222, state['manual_english_results'])
     
-    # Automated Ticket Verification Settlements
     settle_sportsbook_bets(current_round, time_into_current_loop, italian_fixtures + english_fixtures)
         
     return {
@@ -150,7 +148,6 @@ def get_current_match_state():
     }
 
 def settle_sportsbook_bets(current_round, time_into_loop, current_fixtures):
-    # Settle bets once at the end of the playing loop window
     if time_into_loop >= 88 and state['last_settled_round'] < current_round:
         fixture_map = {f['id']: f for f in current_fixtures}
         
@@ -158,7 +155,6 @@ def settle_sportsbook_bets(current_round, time_into_loop, current_fixtures):
             if bet['round'] == current_round and bet['status'] == 'OPEN':
                 fix = fixture_map.get(bet['fixture_id'])
                 if fix:
-                    # Resolve outcome
                     outcome = 'X'
                     if fix['home_score'] > fix['away_score']: outcome = '1'
                     elif fix['away_score'] > fix['home_score']: outcome = '2'
@@ -168,10 +164,10 @@ def settle_sportsbook_bets(current_round, time_into_loop, current_fixtures):
                         bet['status'] = 'WON'
                         payout = round(bet['stake'] * bet['odds'], 2)
                         users[bet['email']]['balance'] += payout
-                        state['company_balance'] -= (payout - bet['stake']) # Deducts from admin account balance
+                        state['company_balance'] -= (payout - bet['stake'])
                     else:
                         bet['status'] = 'LOST'
-                        state['company_balance'] += bet['stake'] # Adds directly to company revenue
+                        state['company_balance'] += bet['stake']
                         
         state['last_settled_round'] = current_round
 
@@ -191,7 +187,7 @@ def get_league_standings(current_round, teams_list, seed_offset, overrides=None)
                 table[h]['d'] += 1; table[h]['pts'] += 1; table[a]['d'] += 1; table[a]['pts'] += 1
     return sorted(table.values(), key=lambda x: x['pts'], reverse=True)
 
-# --- CORE ROUTINGS ---
+# --- CORE ROUTINGS FIXED FROM INFINITE LOOP ---
 @app.route('/')
 def index():
     if 'user' not in session or session['user'] not in users:
@@ -213,145 +209,74 @@ def login():
                 return redirect(url_for('index'))
             flash("Invalid credentials.")
         elif action == 'signup':
-            if email in users: flash("Account already exists.")
+            if email in users: 
+                flash("Account already exists.")
             else:
                 users[email] = {'password': password, 'phone': phone, 'balance': 500.0, 'is_admin': False}
                 session['user'] = email
                 return redirect(url_for('index'))
-    return redirect(url_for('index')) # Backup routing directly to templates landing fallback
+                
+    # Direct HTML fallback output logic avoids recursive app matching states
+    return render_template_string()
 
-# --- SPORTS BET SELECTION POSTING ENGINE ---
+def render_template_string():
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head><title>SwiftPitch Auth</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="background:#0b1118; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; flex-direction:column;">
+        <div id="signin-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center;">
+            <h2 style="color:#ffcc00; margin-bottom:20px;">⚽ SWIFTPITCH LOGIN</h2>
+            <form method="POST">
+                <input type="hidden" name="auth_action" value="signin">
+                <input type="text" name="email" placeholder="Email Address" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <input type="password" name="password" placeholder="Password" required style="width:90%; padding:11px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <button type="submit" style="width:97%; background:#00ff66; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer;">SIGN IN</button>
+            </form>
+            <p style="margin-top:20px; font-size:13px;"><a href="#" onclick="toggle(true)" style="color:#00ff66; text-decoration:none;">Create Account Here →</a></p>
+        </div>
+        <div id="signup-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center; display:none;">
+            <h2 style="color:#00ff66; margin-bottom:20px;">📝 PLAYER REGISTRATION</h2>
+            <form method="POST">
+                <input type="hidden" name="auth_action" value="signup">
+                <input type="email" name="email" placeholder="Email Address" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <input type="text" name="phone" placeholder="Phone Number" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <input type="password" name="password" placeholder="Choose Password" required style="width:90%; padding:11px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <button type="submit" style="width:97%; background:#ffcc00; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer;">REGISTER</button>
+            </form>
+            <p style="margin-top:20px; font-size:13px;"><a href="#" onclick="toggle(false)" style="color:#ffcc00; text-decoration:none;">← Back to Login</a></p>
+        </div>
+        <script>
+            function toggle(show) {
+                document.getElementById('signin-card').style.display = show ? 'none' : 'block';
+                document.getElementById('signup-card').style.display = show ? 'block' : 'none';
+            }
+        </script>
+    </body>
+    </html>
+    '''
+
+# --- POST SLIP MULTIPLIERS ENGINE ---
 @app.route('/api/sportsbook/bet', methods=['POST'])
 def place_sportsbook_bet():
     if 'user' not in session: return jsonify({'success': False, 'message': 'Auth Error'}), 401
-    
     data = request.get_json() or {}
     email = session['user']
     stake = float(data.get('stake', 0))
     
     cs = get_current_match_state()
     if cs['phase'] != 'BETTING':
-        return jsonify({'success': False, 'message': 'Window locked! Round matches already playing.'}), 400
-        
+        return jsonify({'success': False, 'message': 'Round matches already playing.'}), 400
     if users[email]['balance'] < stake or stake < 10:
-        return jsonify({'success': False, 'message': 'Check wallet balance limits (Min: 10 Bob)'}), 400
+        return jsonify({'success': False, 'message': 'Insufficient wallet balance.'}), 400
         
     users[email]['balance'] -= stake
-    
-    new_bet = {
-        'id': f"ticket_{int(time.time())}_{random.randint(10,99)}",
-        'email': email,
-        'round': cs['round'],
-        'fixture_id': data.get('fixture_id'),
-        'teams': data.get('teams'),
-        'prediction': data.get('prediction'),
-        'odds': float(data.get('odds', 1.0)),
-        'stake': stake,
-        'score_feed': 'Vb',
-        'status': 'OPEN'
-    }
-    user_bets.append(new_bet)
+    user_bets.append({
+        'id': f"ticket_{int(time.time())}", 'email': email, 'round': cs['round'],
+        'fixture_id': data.get('fixture_id'), 'teams': data.get('teams'),
+        'prediction': data.get('prediction'), 'odds': float(data.get('odds', 1.0)),
+        'stake': stake, 'score_feed': 'Vb', 'status': 'OPEN'
+    })
     return jsonify({'success': True, 'wallet': users[email]['balance']})
 
-@app.route('/api/sportsbook/mybets')
-def get_my_bets():
-    if 'user' not in session: return jsonify([])
-    # Return user specific slips filtered backwards chronologically
-    user_slips = [b for b in user_bets if b['email'] == session['user']]
-    return jsonify(user_slips[::-1])
-
-# --- CASH FLOW MANAGEMENT OPERATIONS ---
-@app.route('/deposit', methods=['POST'])
-def deposit():
-    if 'user' not in session: return redirect(url_for('login'))
-    amount = float(request.form.get('amount', 0))
-    if amount >= MIN_DEPOSIT:
-        users[session['user']]['balance'] += amount
-    return redirect(url_for('index'))
-
-@app.route('/withdraw', methods=['POST'])
-def withdraw():
-    if 'user' not in session: return redirect(url_for('login'))
-    amount = float(request.form.get('amount', 0))
-    if amount >= MIN_WITHDRAWAL and users[session['user']]['balance'] >= amount:
-        users[session['user']]['balance'] -= amount
-    return redirect(url_for('index'))
-
-# --- ADMIN AUTOMATED AUDITING MODULE ---
-@app.route('/admin/control', methods=['POST'])
-def admin_control():
-    if 'user' not in session or not users[session['user']].get('is_admin'): return jsonify({'success': False}), 403
-    data = request.get_json() or {}
-    action = data.get('action')
-    
-    if action == 'force_result':
-        league = data.get('league')
-        home = data.get('home_team')
-        if state['manual_italian_results'] is None: state['manual_italian_results'] = {}
-        if state['manual_english_results'] is None: state['manual_english_results'] = {}
-        
-        target = state['manual_italian_results'] if league == 'ITALIAN' else state['manual_english_results']
-        target[home] = int(data.get('home_score', 0))
-        return jsonify({'success': True, 'message': 'Overridden result loaded successfully.'})
-    elif action == 'clear_overrides':
-        state['manual_italian_results'] = None
-        state['manual_english_results'] = None
-        return jsonify({'success': True, 'message': 'System resets finished.'})
-    return jsonify({'success': False})
-
-@app.route('/api/aviator/state')
-def aviator_state():
-    update_aviator_loop()
-    user_email = session.get('user', '')
-    elapsed = time.time() - aviator_game['phase_start_time']
-    current_mult = round(1.00 + (elapsed ** 1.3) * 0.08, 2) if aviator_game['phase'] == 'FLYING' else 1.00
-    return jsonify({
-        'round_id': aviator_game['round_id'], 'phase': aviator_game['phase'],
-        'time_left': max(0, round(aviator_game['betting_duration'] - elapsed, 1)) if aviator_game['phase'] == 'BETTING' else 0,
-        'current_multiplier': current_mult, 'has_bet': user_email in aviator_game['active_stakes'],
-        'bet_amount': aviator_game['active_stakes'].get(user_email, 0),
-        'user_wallet': users[user_email]['balance'] if user_email in users else 0.0
-    })
-
-@app.route('/api/aviator/bet', methods=['POST'])
-def aviator_bet():
-    if 'user' not in session: return jsonify({'success': False}), 401
-    update_aviator_loop()
-    email = session['user']
-    amount = float(request.json.get('amount', 0))
-    if users[email]['balance'] >= amount and aviator_game['phase'] == 'BETTING':
-        users[email]['balance'] -= amount
-        aviator_game['active_stakes'][email] = amount
-        return jsonify({'success': True, 'wallet': users[email]['balance']})
-    return jsonify({'success': False, 'message': 'Check entry parameters.'}), 400
-
-@app.route('/api/aviator/cashout', methods=['POST'])
-def aviator_cashout():
-    if 'user' not in session or session['user'] not in aviator_game['active_stakes']: return jsonify({'success': False}), 400
-    elapsed = time.time() - aviator_game['phase_start_time']
-    current_mult = round(1.00 + (elapsed ** 1.3) * 0.08, 2)
-    email = session['user']
-    stake = aviator_game['active_stakes'].pop(email)
-    winnings = round(stake * current_mult, 2)
-    users[email]['balance'] += winnings
-    state['company_balance'] -= (winnings - stake) # Automatic adjustment tracking on win payouts
-    return jsonify({'success': True, 'winnings': winnings, 'multiplier': current_mult})
-
-@app.route('/api/state')
-def get_state():
-    cs = get_current_match_state()
-    return jsonify({
-        'phase': cs['phase'], 'time': cs['time'], 'round': cs['round'],
-        'company_balance': state['company_balance'], # Sends live automated bank balance to frontend view
-        'italian_fixtures': cs['italian_fixtures'], 'english_fixtures': cs['english_fixtures'],
-        'standings_ita': get_league_standings(cs['round'], ITALIAN_TEAMS, 111, state['manual_italian_results']),
-        'standings_eng': get_league_standings(cs['round'], ENGLISH_TEAMS, 222, state['manual_english_results'])
-    })
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    app.run(debug=True)
+@
