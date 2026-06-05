@@ -35,6 +35,9 @@
             grid-template-columns: 1fr 340px; 
             gap: 20px; 
         }
+        @media (max-width: 850px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
         .card { 
             background-color: #121b26; 
             border-radius: 8px; 
@@ -80,7 +83,7 @@
 
         /* LUCKY AVIATOR MULTIPLIER CORE COMPONENTS */
         #aviator-arena { 
-            display: none; 
+            display: block; /* Default to showing the Arena first */
             background: #121b26; 
             border: 2px solid #ff3333; 
             border-radius: 8px; 
@@ -99,4 +102,124 @@
         }
         #aviatorCanvas { 
             width: 100%; 
-            height
+            height: 260px; 
+            display: block; 
+        }
+        .live-multiplier-counter { 
+            position: absolute; 
+            top: 45%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-size: 52px; 
+            font-weight: 900; 
+            color: #ffffff; 
+            text-shadow: 0 4px 15px rgba(0,0,0,0.9); 
+            font-family: 'Courier New', monospace; 
+            letter-spacing: 1px;
+        }
+        .aviator-controls { 
+            display: flex; 
+            justify-content: center; 
+            gap: 15px; 
+            background: #0b1118; 
+            padding: 15px; 
+            border-radius: 6px; 
+            border: 1px solid #1c2a39; 
+        }
+        .aviator-input { 
+            background: #121b26; 
+            border: 1px solid #1c2a39; 
+            color: white; 
+            padding: 12px; 
+            font-size: 16px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            width: 120px; 
+            text-align: center; 
+        }
+        .aviator-btn { 
+            background: #ff3333; 
+            color: white; 
+            font-size: 16px; 
+            font-weight: bold; 
+            padding: 12px 40px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            min-width: 220px; 
+            transition: background 0.1s ease;
+        }
+        .aviator-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* SPORTSBOOK LEAGUE INTERFACES */
+        #sportsbook-zone {
+            display: none; /* Hidden by default until selected */
+        }
+        .fix-row { 
+            display: grid; 
+            grid-template-columns: 1fr 120px; 
+            align-items: center; 
+            padding: 12px; 
+            border-bottom: 1px solid #1c2a39; 
+        }
+        .score-box {
+            background: #070b10;
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            color: #00ff66;
+            letter-spacing: 2px;
+            border: 1px solid #1c2a39;
+        }
+        .btn-action { 
+            width: 100%; 
+            background: #00ff66; 
+            color: #000; 
+            padding: 12px; 
+            font-weight: bold; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            font-size: 13px;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 13px; 
+        }
+        th, td { 
+            padding: 10px 8px; 
+            border-bottom: 1px solid #1c2a39; 
+            text-align: left;
+        }
+        th {
+            color: #a0aec0;
+            font-weight: 600;
+        }
+        .loading-text {
+            color: #a0aec0;
+            font-style: italic;
+            padding: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="logo">⚽ SWIFTPITCH</div>
+        <div style="font-weight: bold; color:#a0aec0; font-size: 15px;">
+            Wallet Balance: <span style="color: #00ff66;" id="live-wallet">{{ "{:,.2f}".format(user.balance) }} KSH</span>
+            <a href="/logout" style="margin-left: 20px; color: #ffcc00; text-decoration: none; border-left: 1px solid #1c2a39; padding-left: 15px;">Logout</a>
+        </div>
+    </div>
+
+    <div class="lane-tabs">
+        <button class="lane-btn aviator-lane-btn active-lane" id="tab-av" onclick="switchLane('AVIATOR')">✈️ Lucky Aviator Arena</button>
+        <button class="lane-btn
