@@ -5,30 +5,28 @@ import random
 app = Flask(__name__)
 app.config.update(SECRET_KEY='swiftpitch_secret_2026')
 
-# --- DATA: TEAMS & CONFIG ---
-ITALIAN_TEAMS = ["Roma", "Juventus", "Milaan Reds", "Torino", "Fiorentina", "Bologna", "Sassuolo", "Lazio", "Verona", "Atlanta", "Monza", "Cremonese", "Leece", "Udinese", "Spenzia", "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"]
-ENGLISH_TEAMS = ["Manchester blue", "spurs", "A.Villa", "London blues", "Manchester red", "New castle", "Everton", "Bournemouth", "N. forrest", "Brighton", "London reds", "Brentford", "Wolves", "west Ham", "Southampton", "Fulham", "Liverpool", "C.Palace", "Leicester", "Leeds"]
+# --- DATA ---
+ITALIAN_TEAMS = ["Roma", "Juventus", "Lazio", "Napoli", "Fiorentina", "Bologna", "Sassuolo", "Verona", "Atalanta", "Monza"]
+ENGLISH_TEAMS = ["Arsenal", "Man City", "Liverpool", "Chelsea", "Man Utd", "Spurs", "Newcastle", "Everton", "Bournemouth", "Brighton"]
 
-users = {
-    'admin@swiftpitch.com': {'password': 'adminpassword', 'balance': 0.0, 'is_admin': True}
-}
+users = {'admin@swiftpitch.com': {'password': 'adminpassword', 'is_admin': True, 'balance': 1000.0}}
+state = {'company_balance': 250000.0, 'start_time': time.time()}
 
 # --- AVIATOR ENGINE ---
-aviator_game = {
-    'phase': 'BETTING',
-    'phase_start_time': time.time(),
-    'crash_multiplier': 2.50
-}
+aviator_game = {'phase': 'BETTING', 'start_time': time.time(), 'multiplier': 1.0}
 
-def update_aviator_loop():
-    elapsed = time.time() - aviator_game['phase_start_time']
-    if aviator_game['phase'] == 'BETTING' and elapsed >= 10:
+def update_game_engines():
+    # Aviator Logic
+    elapsed = time.time() - aviator_game['start_time']
+    if aviator_game['phase'] == 'BETTING' and elapsed > 10:
         aviator_game['phase'] = 'FLYING'
-        aviator_game['phase_start_time'] = time.time()
-        aviator_game['crash_multiplier'] = round(random.uniform(1.0, 5.0), 2)
-    elif aviator_game['phase'] == 'FLYING' and elapsed >= 5:
-        aviator_game['phase'] = 'BETTING'
-        aviator_game['phase_start_time'] = time.time()
+        aviator_game['start_time'] = time.time()
+        aviator_game['multiplier'] = 1.0
+    elif aviator_game['phase'] == 'FLYING':
+        aviator_game['multiplier'] += 0.1
+        if aviator_game['multiplier'] > random.uniform(2.0, 10.0):
+            aviator_game['phase'] = 'BETTING'
+            aviator_game['start_time'] = time.time()
 
 # --- ROUTES ---
 @app.route('/')
@@ -39,30 +37,23 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
-        if email in users:
-            session['user'] = email
-            return redirect(url_for('index'))
+        session['user'] = request.form.get('email')
+        return redirect(url_for('index'))
     return '<form method="POST">Email: <input type="text" name="email"><button>Login</button></form>'
 
-@app.route('/api/aviator/state')
-def aviator_state():
-    update_aviator_loop()
-    return jsonify({
-        'phase': aviator_game['phase'],
-        'multiplier': aviator_game['crash_multiplier'] if aviator_game['phase'] == 'FLYING' else 1.0
-    })
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 @app.route('/api/state')
 def get_state():
+    update_game_engines() # Keep games moving
     return jsonify({
+        'aviator': aviator_game,
         'italian_teams': ITALIAN_TEAMS,
         'english_teams': ENGLISH_TEAMS
     })
 
 if __name__ == '__main__':
     app.run(debug=True)
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
