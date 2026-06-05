@@ -16,19 +16,14 @@ app.config.update(
 users = {
     'admin@swiftpitch.com': {
         'password': 'adminpassword', 
+        'phone': '0700000000',
         'balance': 0.0, 
-        'bonus_unlocked': True, 
         'is_admin': True
-    },
-    'player@test.com': {
-        'password': 'password123',
-        'balance': 1000.0,
-        'bonus_unlocked': True,
-        'is_admin': False
     }
 }
 
 placed_bets = []
+withdrawals_log = []
 
 # --- SPORTSBOOK COMPETITIONS SQUADS DATA ---
 ITALIAN_TEAMS = [
@@ -45,17 +40,21 @@ ENGLISH_TEAMS = [
     "Fulham", "Liverpool", "C.Palace", "Leicester", "Leeds"
 ]
 
-# --- VIRTUAL SIMULATION STATE ENGINE ---
+# --- SIMULATION STATE MACHINE ---
 state = {
     'is_running': True,
     'start_time': time.time(),
     'paused_elapsed': 0,
     'company_balance': 500000.0,
-    'manual_italian_results': None,  # Used by admin to override simulations
+    'manual_italian_results': None,  
     'manual_english_results': None
 }
 
-# --- LUCKY AVIATOR CRASH ENGINE CONFIGURATION ---
+# --- MINIMUM LIMIT PARAMETERS ---
+MIN_DEPOSIT = 10.0
+MIN_WITHDRAWAL = 100.0
+
+# --- LUCKY AVIATOR CRASH ENGINE ---
 aviator_game = {
     'round_id': 1,
     'phase': 'BETTING',      
@@ -65,7 +64,6 @@ aviator_game = {
     'active_stakes': {}       
 }
 
-# --- AVIATOR ENGINE ALGORITHMS ---
 def generate_provably_fair_crash_point():
     if random.random() < 0.03:
         return 1.00  
@@ -98,7 +96,7 @@ def update_aviator_loop():
             aviator_game['phase_start_time'] = now
             aviator_game['round_id'] += 1
 
-# --- VIRTUAL FOOTBALL MATCH MATRICES ---
+# --- VIRTUAL FOOTBALL GENERATOR ---
 def generate_fixtures_for_round(round_num, team_list, seed_offset, override_scores=None):
     random.seed(round_num + seed_offset) 
     shuffled_teams = list(team_list)
@@ -113,7 +111,6 @@ def generate_fixtures_for_round(round_num, team_list, seed_offset, override_scor
         draw_odds = round(random.uniform(2.60, 3.80), 2)
         away_odds = round(random.uniform(1.40, 5.00), 2)
         
-        # Use administrative override if provided by admin panel
         if override_scores and home in override_scores:
             h_score = override_scores[home]
             a_score = override_scores.get(away, random.randint(0, 4))
@@ -123,10 +120,8 @@ def generate_fixtures_for_round(round_num, team_list, seed_offset, override_scor
         
         fixtures.append({
             'id': f"fix_{round_num}_{i}_{seed_offset}",
-            'home': home,
-            'away': away,
-            'home_score': h_score,
-            'away_score': a_score,
+            'home': home, 'away': away,
+            'home_score': h_score, 'away_score': a_score,
             'odds': {'HOME': home_odds, 'DRAW': draw_odds, 'AWAY': away_odds}
         })
     return fixtures
@@ -135,11 +130,7 @@ def get_current_match_state():
     total_loop_time = 115  
     TOTAL_ROUNDS_IN_SEASON = 19  
     
-    if not state['is_running']:
-        elapsed = int(state['paused_elapsed'])
-    else:
-        elapsed = int(time.time() - state['start_time'])
-        
+    elapsed = int(time.time() - state['start_time'])
     total_season_time = total_loop_time * TOTAL_ROUNDS_IN_SEASON
     season_number = (elapsed // total_season_time) + 1
     time_into_current_season = elapsed % total_season_time
@@ -158,8 +149,7 @@ def get_current_match_state():
     english_fixtures = generate_fixtures_for_round(current_round, ENGLISH_TEAMS, 222, state['manual_english_results'])
         
     return {
-        'phase': phase, 'time': time_left, 'time_into_loop': time_into_current_loop,
-        'round': current_round, 'season': season_number,
+        'phase': phase, 'time': time_left, 'round': current_round, 'season': season_number,
         'italian_fixtures': italian_fixtures, 'english_fixtures': english_fixtures
     }
 
@@ -179,7 +169,7 @@ def get_league_standings(current_round, teams_list, seed_offset, overrides=None)
                 table[h]['d'] += 1; table[h]['pts'] += 1; table[a]['d'] += 1; table[a]['pts'] += 1
     return sorted(table.values(), key=lambda x: x['pts'], reverse=True)
 
-# --- ROUTING ENDPOINTS ---
+# --- WEB CORE INTERFACES ---
 @app.route('/')
 def index():
     if 'user' not in session or session['user'] not in users:
@@ -192,6 +182,7 @@ def login():
     if request.method == 'POST':
         action = request.form.get('auth_action')
         email = request.form.get('email', '').strip()
+        phone = request.form.get('phone', '').strip()
         password = request.form.get('password', '').strip()
         
         if action == 'signin':
@@ -201,32 +192,91 @@ def login():
             flash("Invalid email or password.")
         elif action == 'signup':
             if email in users:
-                flash("An account with that email already exists.")
+                flash("Account already exists.")
             elif len(email) < 5 or len(password) < 4:
-                flash("Please enter valid credentials.")
+                flash("Please enter valid details.")
             else:
-                users[email] = {'password': password, 'balance': 1000.0, 'bonus_unlocked': True, 'is_admin': False}
+                # Registration tracking phone and email
+                users[email] = {
+                    'password': password, 'phone': phone, 'balance': 1000.0, 'is_admin': False
+                }
                 session['user'] = email
                 return redirect(url_for('index'))
                 
     return '''
     <!DOCTYPE html>
     <html>
+    <head><title>SwiftPitch Auth</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
     <body style="background:#0b1118; color:white; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; flex-direction:column;">
-        <div style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center;">
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}<p style="color:#ff3333; font-weight:bold;">{{ messages[0] }}</p>{% endif %}
+        {% endwith %}
+        
+        <div id="signin-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center;">
             <h2 style="color:#ffcc00; margin-bottom:20px;">⚽ SWIFTPITCH LOGIN</h2>
             <form method="POST">
                 <input type="hidden" name="auth_action" value="signin">
                 <input type="text" name="email" placeholder="Email Address" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
                 <input type="password" name="password" placeholder="Password" required style="width:90%; padding:11px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
-                <button type="submit" style="width:97%; background:#00ff66; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer;">Sign In</button>
+                <button type="submit" style="width:97%; background:#00ff66; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer;">SIGN IN</button>
             </form>
+            <p style="margin-top:20px; font-size:13px;"><a href="#" onclick="toggle(true)" style="color:#00ff66; text-decoration:none;">Create Account Here →</a></p>
         </div>
+
+        <div id="signup-card" style="background:#121b26; padding:30px; border-radius:8px; border:1px solid #1c2a39; width:320px; text-align:center; display:none;">
+            <h2 style="color:#00ff66; margin-bottom:20px;">📝 PLAYER REGISTRATION</h2>
+            <form method="POST">
+                <input type="hidden" name="auth_action" value="signup">
+                <input type="email" name="email" placeholder="Email Address" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <input type="text" name="phone" placeholder="Phone Number" required style="width:90%; padding:11px; margin-bottom:15px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <input type="password" name="password" placeholder="Choose Password" required style="width:90%; padding:11px; margin-bottom:20px; background:#0b1118; border:1px solid #1c2a39; color:white; border-radius:4px;"><br>
+                <button type="submit" style="width:97%; background:#ffcc00; color:black; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer;">REGISTER</button>
+            </form>
+            <p style="margin-top:20px; font-size:13px;"><a href="#" onclick="toggle(false)" style="color:#ffcc00; text-decoration:none;">← Back to Login</a></p>
+        </div>
+
+        <script>
+            function toggle(show) {
+                document.getElementById('signin-card').style.display = show ? 'none' : 'block';
+                document.getElementById('signup-card').style.display = show ? 'block' : 'none';
+            }
+        </script>
     </body>
     </html>
     '''
 
-# --- ADMINSTRATIVE CONTROL PANEL ROUTINGS ---
+# --- FINANCIAL OPERATIONS LABELS ---
+@app.route('/deposit', methods=['POST'])
+def deposit():
+    if 'user' not in session: return redirect(url_for('login'))
+    try: amount = float(request.form.get('amount', 0))
+    except ValueError: amount = 0.0
+    
+    if amount >= MIN_DEPOSIT:
+        users[session['user']]['balance'] += amount
+        flash(f"Deposited {amount} KSH successfully!")
+    else:
+        flash(f"Minimum deposit is {MIN_DEPOSIT} KSH.")
+    return redirect(url_for('index'))
+
+@app.route('/withdraw', methods=['POST'])
+def withdraw():
+    if 'user' not in session: return redirect(url_for('login'))
+    try: amount = float(request.form.get('amount', 0))
+    except ValueError: amount = 0.0
+    
+    user = users[session['user']]
+    if amount < MIN_WITHDRAWAL:
+        flash(f"Minimum withdrawal allowed is {MIN_WITHDRAWAL} KSH.")
+    elif user['balance'] < amount:
+        flash("Insufficient funds to fulfill withdrawal.")
+    else:
+        user['balance'] -= amount
+        withdrawals_log.append({'email': session['user'], 'amount': amount, 'time': time.time()})
+        flash(f"Withdrew {amount} KSH successfully!")
+    return redirect(url_for('index'))
+
+# --- ADMIN OPERATIONS MODULE ---
 @app.route('/admin/control', methods=['POST'])
 def admin_control():
     if 'user' not in session or not users[session['user']].get('is_admin'):
@@ -241,20 +291,19 @@ def admin_control():
         home_score = int(data.get('home_score', 0))
         away_score = int(data.get('away_score', 0))
         
-        target_override = 'manual_italian_results' if league == 'ITALIAN' else 'manual_english_results'
-        if state[target_override] is None:
-            state[target_override] = {}
-        state[target_override][home_team] = home_score
-        return jsonify({'success': True, 'message': f'Forced result recorded for {home_team}.'})
+        target = 'manual_italian_results' if league == 'ITALIAN' else 'manual_english_results'
+        if state[target] is None: state[target] = {}
+        state[target][home_team] = home_score
+        return jsonify({'success': True, 'message': f'Forced match array logged for {home_team}.'})
         
     elif action == 'clear_overrides':
         state['manual_italian_results'] = None
         state['manual_english_results'] = None
-        return jsonify({'success': True, 'message': 'All manual simulation overrides cleared.'})
+        return jsonify({'success': True, 'message': 'All manual game triggers cleared.'})
         
-    return jsonify({'success': False, 'message': 'Unknown administrative command.'})
+    return jsonify({'success': False, 'message': 'Unknown command.'})
 
-# --- DYNAMIC REFRESH API ENDPOINTS ---
+# --- DATA STREAM INTERFACES ---
 @app.route('/api/aviator/state')
 def aviator_state():
     update_aviator_loop()
@@ -263,11 +312,9 @@ def aviator_state():
     current_mult = round(1.00 + (elapsed ** 1.3) * 0.08, 2) if aviator_game['phase'] == 'FLYING' else 1.00
         
     return jsonify({
-        'round_id': aviator_game['round_id'],
-        'phase': aviator_game['phase'],
+        'round_id': aviator_game['round_id'], 'phase': aviator_game['phase'],
         'time_left': max(0, round(aviator_game['betting_duration'] - elapsed, 1)) if aviator_game['phase'] == 'BETTING' else 0,
-        'current_multiplier': current_mult,
-        'has_bet': user_email in aviator_game['active_stakes'],
+        'current_multiplier': current_mult, 'has_bet': user_email in aviator_game['active_stakes'],
         'bet_amount': aviator_game['active_stakes'].get(user_email, 0),
         'user_wallet': users[user_email]['balance'] if user_email in users else 0.0
     })
@@ -276,7 +323,7 @@ def aviator_state():
 def aviator_bet():
     if 'user' not in session: return jsonify({'success': False}), 401
     update_aviator_loop()
-    if aviator_game['phase'] != 'BETTING': return jsonify({'success': False, 'message': 'Boarding closed!'}), 400
+    if aviator_game['phase'] != 'BETTING': return jsonify({'success': False, 'message': 'Flight closed!'}), 400
     
     email = session['user']
     amount = float(request.json.get('amount', 0))
