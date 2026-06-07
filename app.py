@@ -2,9 +2,13 @@ from flask import Flask, render_template, request, redirect, session, url_for, j
 import os
 import time
 import random
+import threading
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'swiftpitch_clean_slate_2026')
+
+# Thread safety lock to prevent concurrent modification crashes on cloud servers
+state_lock = threading.Lock()
 
 # --- LEAGUE CONTEXT CONFIGURATIONS ---
 ITALIAN_TEAMS = [
@@ -21,24 +25,23 @@ ENGLISH_TEAMS = [
     "Fulham", "Liverpool", "C.Palace", "Leicester", "Leeds"
 ]
 
-# Precise Cycle Constants (Seconds)
+# Precise Cycle Constants
 BETTING_WINDOW = 72.0
 MATCH_WINDOW = 55.0
 
-# Global Application State Engine
 state = {
     'house_balance': 750000.0,
     'simulation_running': True,     
     'last_update': time.time(),
     'current_round': 1,
-    'league_phase': 'BETTING',       # 'BETTING' or 'LIVE'
+    'league_phase': 'BETTING',       
     'phase_start_time': time.time(),
     'season_fixtures_italian': {},
     'season_fixtures_english': {},
     'live_matches_italian': [],
     'live_matches_english': [],
     'match_logs': [],
-    'sports_bets': [],               # Universal Ledger for Singles and Multi-bets
+    'sports_bets': [],               
     'standings_italian': {},
     'standings_english': {},
     'aviator': {'phase': 'BETTING', 'start': time.time(), 'multiplier': 1.0, 'stakes': {}}
@@ -78,7 +81,7 @@ def build_round_robin_schedule(teams, league_tag):
                 'odds_home': round(random.uniform(1.4, 3.2), 2),
                 'odds_draw': round(random.uniform(2.6, 3.6), 2),
                 'odds_away': round(random.uniform(2.1, 4.5), 2),
-                'timeline': []  # Pre-generated timeline arrays
+                'timeline': []  
             })
             match_id += 1
         rotation = [rotation[0]] + [rotation[-1]] + rotation[1:-1]
@@ -96,7 +99,6 @@ def load_league_round_fixtures():
     state['live_matches_italian'] = state['season_fixtures_italian'][r]
     state['live_matches_english'] = state['season_fixtures_english'][r]
     
-    # Initialize as pending for the betting countdown window
     for m in state['live_matches_italian'] + state['live_matches_english']:
         m['status'] = 'BETTING'
         m['minute'] = 0
@@ -104,7 +106,6 @@ def load_league_round_fixtures():
         m['timeline'] = []
 
 def precalculate_match_events():
-    """Generates goals and timelines evenly spread across the 55s simulation window"""
     for m in state['live_matches_italian'] + state['live_matches_english']:
         m['status'] = 'LIVE'
         gh = random.choices([0, 1, 2, 3], weights=[40, 35, 18, 7])[0]
@@ -115,61 +116,53 @@ def precalculate_match_events():
         for _ in range(ga): timeline.append({'min': random.randint(1, 89), 'side': 'A'})
         m['timeline'] = sorted(timeline, key=lambda x: x['min'])
 
-# Initialize leagues
 init_standings()
 state['season_fixtures_italian'] = build_round_robin_schedule(ITALIAN_TEAMS, 'ITALIAN')
 state['season_fixtures_english'] = build_round_robin_schedule(ENGLISH_TEAMS, 'ENGLISH')
 load_league_round_fixtures()
 
-# --- STATE SYNCHRONIZATION ENGINE ---
 def dynamic_engine_loop():
     now = time.time()
     dt = now - state['last_update']
     state['last_update'] = now
     
-    # Aviator Loop Cycle
+    # Aviator Loop Cycle Execution
     av_elapsed = now - state['aviator']['start']
-    if state['aviator']['phase'] == 'BETTING' and av_elapsed > 10:
+    if state['aviator']['phase'] == 'BETTING' and av_elapsed > 12:
         state['aviator']['phase'] = 'FLYING'
         state['aviator']['start'] = now
         state['aviator']['multiplier'] = 1.0
     elif state['aviator']['phase'] == 'FLYING':
-        state['aviator']['multiplier'] += round(dt * 0.5, 2)
-        if state['aviator']['multiplier'] > random.uniform(1.2, 5.0):
+        state['aviator']['multiplier'] += round(dt * 0.6, 2)
+        if state['aviator']['multiplier'] > random.uniform(1.15, 6.0):
             state['aviator']['phase'] = 'BETTING'
             state['aviator']['start'] = now
-            state['aviator']['stakes'] = {}
+            state['aviator']['stakes'] = {} # Wagers wiped on crash point
 
     if not state['simulation_running']:
         return
 
-    # Unified Match Phase Scheduler
+    # Unified Match Clock Scheduler (72s / 55s)
     elapsed_phase = now - state['phase_start_time']
-    
     if state['league_phase'] == 'BETTING':
         if elapsed_phase >= BETTING_WINDOW:
-            # Transit from 72s Betting Window into 55s Live Action
             state['league_phase'] = 'LIVE'
             state['phase_start_time'] = now
             precalculate_match_events()
             
     elif state['league_phase'] == 'LIVE':
         if elapsed_phase >= MATCH_WINDOW:
-            # End of 55s Live Match Phase
             finalize_and_settle_round()
             state['current_round'] += 1
             state['league_phase'] = 'BETTING'
             state['phase_start_time'] = now
             load_league_round_fixtures()
         else:
-            # Map elapsed seconds to full 90 minutes
             ratio = elapsed_phase / MATCH_WINDOW
             current_game_minute = int(ratio * 90)
             
-            all_live = state['live_matches_italian'] + state['live_matches_english']
-            for m in all_live:
+            for m in state['live_matches_italian'] + state['live_matches_english']:
                 m['minute'] = current_game_minute
-                # Evaluate real-time live scores from pre-calculated event timeline
                 home_goals = sum(1 for g in m['timeline'] if g['min'] <= current_game_minute and g['side'] == 'H')
                 away_goals = sum(1 for g in m['timeline'] if g['min'] <= current_game_minute and g['side'] == 'A')
                 m['score'] = f"{home_goals}-{away_goals}"
@@ -199,7 +192,7 @@ def finalize_and_settle_round():
             
         state['match_logs'].append(f"[{m['league']}] Rd {state['current_round']} | {m['teams']} ({m['score']})")
 
-    # --- MULTI-BET ACCUMULATOR SETTLEMENT ENGINE ---
+    # Multi-bet settlement logic safely verified inside lock context
     for bet in state['sports_bets']:
         if bet['status'] != 'PENDING':
             continue
@@ -230,130 +223,113 @@ def finalize_and_settle_round():
                 user_profile['balance'] += payout
             state['house_balance'] -= payout
 
-# --- MULTI-BET PLACEMENT ENDPOINT ---
+# --- SAFETY WRAPPED ENDPOINTS ---
 @app.route('/api/sports/bet', methods=['POST'])
 def place_sports_bet():
-    user = users.get(session.get('user'))
-    if not user: return jsonify({'success': False, 'message': 'Unauthorized context'})
-    if state['league_phase'] != 'BETTING':
-        return jsonify({'success': False, 'message': 'Betslip locked! Matches are already in progress.'})
+    with state_lock:
+        user = users.get(session.get('user'))
+        if not user: return jsonify({'success': False, 'message': 'Unauthorized context'})
+        if state['league_phase'] != 'BETTING':
+            return jsonify({'success': False, 'message': 'Betslip locked! Matches are running.'})
+            
+        data = request.get_json() or {}
+        selections = data.get('selections', [])
+        stake = float(data.get('stake', 0))
         
-    data = request.get_json() or {}
-    selections = data.get('selections', []) # Format: [{'match_id':X, 'prediction':Y}]
-    stake = float(data.get('stake', 0))
-    
-    if len(selections) == 0: return jsonify({'success': False, 'message': 'Betslip is empty'})
-    if stake < 10.0: return jsonify({'success': False, 'message': 'Minimum selection wager is 10 KSH'})
-    if user['balance'] < stake: return jsonify({'success': False, 'message': 'Insufficient account balance'})
-    
-    all_live = state['live_matches_italian'] + state['live_matches_english']
-    match_map = {m['id']: m for m in all_live}
-    
-    processed_selections = []
-    accumulated_odds = 1.0
-    seen_matches = set()
-    
-    for sel in selections:
-        mid = int(sel['match_id'])
-        pred = sel['prediction']
+        if len(selections) == 0: return jsonify({'success': False, 'message': 'Betslip empty'})
+        if stake < 10.0: return jsonify({'success': False, 'message': 'Minimum selection wager is 10 KSH'})
+        if user['balance'] < stake: return jsonify({'success': False, 'message': 'Insufficient account balance'})
         
-        if mid in seen_matches:
-            return jsonify({'success': False, 'message': 'Combining outcomes from the same match is invalid'})
-        seen_matches.add(mid)
+        all_live = state['live_matches_italian'] + state['live_matches_english']
+        match_map = {m['id']: m for m in all_live}
         
-        m = match_map.get(mid)
-        if not m: return jsonify({'success': False, 'message': 'Match scope expired'})
+        processed_selections = []
+        accumulated_odds = 1.0
+        seen_matches = set()
         
-        if pred == '1': o = m['odds_home']
-        elif pred == 'X': o = m['odds_draw']
-        elif pred == '2': o = m['odds_away']
-        else: return jsonify({'success': False, 'message': 'Invalid selection profile'})
-        
-        accumulated_odds *= o
-        processed_selections.append({
-            'match_id': mid,
-            'teams': m['teams'],
-            'prediction': pred,
-            'odds': o,
-            'status': 'PENDING'
+        for sel in selections:
+            mid = int(sel['match_id'])
+            pred = sel['prediction']
+            if mid in seen_matches: return jsonify({'success': False, 'message': 'Duplicate selections detected'})
+            seen_matches.add(mid)
+            
+            m = match_map.get(mid)
+            if not m: return jsonify({'success': False, 'message': 'Match scope expired'})
+            o = m['odds_home'] if pred == '1' else (m['odds_draw'] if pred == 'X' else m['odds_away'])
+            
+            accumulated_odds *= o
+            processed_selections.append({'match_id': mid, 'teams': m['teams'], 'prediction': pred, 'odds': o, 'status': 'PENDING'})
+            
+        user['balance'] -= stake
+        state['house_balance'] += stake
+        state['sports_bets'].append({
+            'user': session['user'], 'type': 'SINGLE' if len(processed_selections) == 1 else 'MULTI-BET',
+            'stake': stake, 'total_odds': round(accumulated_odds, 2), 'status': 'PENDING', 'selections': processed_selections
         })
-        
-    accumulated_odds = round(accumulated_odds, 2)
-    user['balance'] -= stake
-    state['house_balance'] += stake
-    
-    state['sports_bets'].append({
-        'user': session['user'],
-        'type': 'SINGLE' if len(processed_selections) == 1 else 'MULTI-BET',
-        'stake': stake,
-        'total_odds': accumulated_odds,
-        'status': 'PENDING',
-        'selections': processed_selections
-    })
-    return jsonify({'success': True, 'message': 'Betslip booked successfully!'})
+        return jsonify({'success': True, 'message': 'Betslip placed successfully!'})
 
 @app.route('/api/aviator/bet', methods=['POST'])
 def aviator_bet():
-    user = users.get(session.get('user'))
-    if not user or state['aviator']['phase'] != 'BETTING': return jsonify({'success': False})
-    data = request.get_json() or {}
-    stake = float(data.get('stake', 0))
-    if user['balance'] >= stake and stake >= 10.0:
-        user['balance'] -= stake
-        state['house_balance'] += stake
-        state['aviator']['stakes'][session['user']] = stake
-        return jsonify({'success': True})
-    return jsonify({'success': False})
+    with state_lock:
+        user = users.get(session.get('user'))
+        if not user or state['aviator']['phase'] != 'BETTING': return jsonify({'success': False})
+        data = request.get_json() or {}
+        stake = float(data.get('stake', 0))
+        if user['balance'] >= stake and stake >= 10.0:
+            user['balance'] -= stake
+            state['house_balance'] += stake
+            state['aviator']['stakes'][session['user']] = stake
+            return jsonify({'success': True})
+        return jsonify({'success': False})
 
 @app.route('/api/aviator/cashout', methods=['POST'])
 def aviator_cashout():
-    user = users.get(session.get('user'))
-    if not user or state['aviator']['phase'] != 'FLYING': return jsonify({'success': False})
-    stake = state['aviator']['stakes'].pop(session['user'], None)
-    if stake:
-        winnings = stake * state['aviator']['multiplier']
-        user['balance'] += winnings
-        state['house_balance'] -= winnings
-        return jsonify({'success': True, 'winnings': winnings})
-    return jsonify({'success': False})
+    with state_lock:
+        user = users.get(session.get('user'))
+        if not user or state['aviator']['phase'] != 'FLYING': return jsonify({'success': False})
+        stake = state['aviator']['stakes'].pop(session['user'], None)
+        if stake:
+            winnings = stake * state['aviator']['multiplier']
+            user['balance'] += winnings
+            state['house_balance'] -= winnings
+            return jsonify({'success': True, 'winnings': winnings})
+        return jsonify({'success': False})
 
 @app.route('/api/state')
 def get_state():
-    dynamic_engine_loop()
-    curr_user = users.get(session.get('user'), {'role': 'user', 'balance': 0.0})
-    is_admin = curr_user.get('role') == 'admin'
-    
-    now = time.time()
-    elapsed = now - state['phase_start_time']
-    rem = (BETTING_WINDOW if state['league_phase'] == 'BETTING' else MATCH_WINDOW) - elapsed
-    
-    user_slips = []
-    for b in state['sports_bets']:
-        if b['user'] == session.get('user'):
-            user_slips.append({
-                'type': b['type'],
-                'stake': b['stake'],
-                'total_odds': b['total_odds'],
-                'status': b['status'],
-                'desc': ", ".join([f"{s['teams']} ({s['prediction']})" for s in b['selections']])
-            })
-            
-    return jsonify({
-        'house_balance': state['house_balance'] if is_admin else None, 
-        'current_round': state['current_round'],
-        'league_phase': state['league_phase'],
-        'time_remaining': max(0, int(rem)),
-        'live_matches': state['live_matches_italian'] + state['live_matches_english'],
-        'match_logs': state['match_logs'][-8:],
-        'standings_italian': state['standings_italian'],
-        'standings_english': state['standings_english'],
-        'aviator': {'phase': state['aviator']['phase'], 'multiplier': state['aviator']['multiplier']},
-        'user_balance': curr_user['balance'],
-        'user_bonus': curr_user.get('bonus', 0),
-        'user_bonus_locked': curr_user.get('bonus_locked', False),
-        'user_role': curr_user['role'],
-        'my_slips': user_slips[-5:]
-    })
+    with state_lock:
+        dynamic_engine_loop()
+        curr_user = users.get(session.get('user'), {'role': 'user', 'balance': 0.0})
+        is_admin = curr_user.get('role') == 'admin'
+        
+        rem = (BETTING_WINDOW if state['league_phase'] == 'BETTING' else MATCH_WINDOW) - (time.time() - state['phase_start_time'])
+        
+        user_slips = []
+        for b in state['sports_bets']:
+            if b['user'] == session.get('user'):
+                user_slips.append({
+                    'type': b['type'], 'stake': b['stake'], 'total_odds': b['total_odds'], 'status': b['status'],
+                    'desc': ", ".join([f"{s['teams']} ({s['prediction']})" for s in b['selections']])
+                })
+                
+        return jsonify({
+            'house_balance': state['house_balance'] if is_admin else None, # Restricting Vault completely from user visibility
+            'current_round': state['current_round'],
+            'league_phase': state['league_phase'],
+            'time_remaining': max(0, int(rem)),
+            'live_matches': state['live_matches_italian'] + state['live_matches_english'],
+            'match_logs': state['match_logs'][-8:],
+            'standings_italian': state['standings_italian'],
+            'standings_english': state['standings_english'],
+            'aviator': {
+                'phase': state['aviator']['phase'], 
+                'multiplier': state['aviator']['multiplier'],
+                'has_bet': session.get('user') in state['aviator']['stakes'] # The authoritative engine state
+            },
+            'user_balance': curr_user['balance'],
+            'user_role': curr_user['role'],
+            'my_slips': user_slips[-5:]
+        })
 
 @app.route('/')
 def index():
@@ -382,22 +358,24 @@ def logout():
 
 @app.route('/deposit', methods=['POST'])
 def deposit():
-    user = users.get(session.get('user'))
-    if user:
-        amount = float(request.form.get('amount', 0))
-        if amount >= 10.0:
-            user['balance'] += amount
-            state['house_balance'] += amount
+    with state_lock:
+        user = users.get(session.get('user'))
+        if user:
+            amount = float(request.form.get('amount', 0))
+            if amount >= 10.0:
+                user['balance'] += amount
+                state['house_balance'] += amount
     return redirect(url_for('index'))
 
 @app.route('/withdraw', methods=['POST'])
 def withdraw():
-    user = users.get(session.get('user'))
-    if user and float(request.form.get('amount', 0)) >= 100.0:
-        amount = float(request.form.get('amount', 0))
-        if user['balance'] >= amount:
-            user['balance'] -= amount
-            state['house_balance'] -= amount
+    with state_lock:
+        user = users.get(session.get('user'))
+        if user and float(request.form.get('amount', 0)) >= 100.0:
+            amount = float(request.form.get('amount', 0))
+            if user['balance'] >= amount:
+                user['balance'] -= amount
+                state['house_balance'] -= amount
     return redirect(url_for('index'))
 
 @app.route('/admin')
@@ -409,17 +387,12 @@ def admin_dashboard():
 
 @app.route('/admin/toggle', methods=['POST'])
 def toggle_sim():
-    user = users.get(session.get('user'), {})
-    if user.get('role') != 'admin': return "Unauthorized", 403
-    data = request.get_json() or {}
-    state['simulation_running'] = data.get('run', True)
-    return jsonify({'success': True})
-
-@app.route('/api/admin/users')
-def admin_get_users():
-    if 'user' not in session or users.get(session['user'], {}).get('role') != 'admin': return jsonify({'error': 'Unauthorized'}), 403
-    safe_users = {k: {v_k: v_v for v_k, v_v in v.items() if v_k != 'password'} for k, v in users.items()}
-    return jsonify(safe_users)
+    with state_lock:
+        user = users.get(session.get('user'), {})
+        if user.get('role') != 'admin': return "Unauthorized", 403
+        data = request.get_json() or {}
+        state['simulation_running'] = data.get('run', True)
+        return jsonify({'success': True})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
