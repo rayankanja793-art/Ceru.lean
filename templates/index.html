@@ -52,7 +52,6 @@
             gap: 20px;
         }
 
-        /* Admin Vault Masking - Hidden by default */
         #admin-vault-container {
             display: none;
             background: rgba(255, 204, 0, 0.1);
@@ -117,7 +116,6 @@
             text-transform: uppercase;
         }
 
-        /* --- CONTROLS, DEPOSIT & WITHDRAW --- */
         .transaction-box form {
             display: flex;
             gap: 8px;
@@ -312,8 +310,9 @@
             <h3 style="color: #ff3366;">Aviator Engine</h3>
             <div id="av-card" class="multiplier-card" style="color: var(--danger-red);">1.00x</div>
             
-            <div class="transaction-box" style="margin-bottom: 10px;">
-                <input type="number" id="aviator-stake" placeholder="Wager Stake (KSH)" value="100" min="10">
+            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                <input type="number" id="aviator-wager" placeholder="Stake KSH" value="100" min="10" style="width: 50%; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 8px; border-radius: 4px;">
+                <input type="number" id="aviator-auto-rate" placeholder="Auto Cash (e.g. 2.0)" step="0.05" min="1.1" style="width: 50%; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 8px; border-radius: 4px;">
             </div>
             <button id="aviator-btn" class="aviator-bet-btn" onclick="handleAviatorAction()" style="background: var(--accent-green); color: var(--bg-dark);">Place Wager</button>
         </div>
@@ -333,16 +332,12 @@
             </div>
 
             <div class="league-section">
-                <div class="league-title">
-                    🇮🇹 Italian Simulation League
-                </div>
+                <div class="league-title">🇮🇹 Italian Simulation League</div>
                 <div id="italian-fixtures"></div>
             </div>
 
             <div class="league-section">
-                <div class="league-title">
-                    🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Simulation League
-                </div>
+                <div class="league-title">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Simulation League</div>
                 <div id="english-fixtures"></div>
             </div>
         </div>
@@ -387,10 +382,8 @@
         fetch('/api/state')
             .then(res => res.json())
             .then(data => {
-                // Update User Balances Safely
                 document.getElementById('user-bal').innerText = data.user_balance.toFixed(2);
                 
-                // Secure Administrative Mask Check
                 const vaultContainer = document.getElementById('admin-vault-container');
                 if (data.user_role === 'admin' && data.house_balance !== null) {
                     vaultContainer.style.display = 'block';
@@ -399,7 +392,6 @@
                     vaultContainer.style.display = 'none';
                 }
 
-                // Welcome Bonus Tracking UI logic
                 const bonusContainer = document.getElementById('bonus-container');
                 if (data.user_bonus > 0) {
                     bonusContainer.style.display = 'block';
@@ -410,14 +402,12 @@
                     bonusContainer.style.display = 'none';
                 }
 
-                // Global Engine Controls & Cycles Update
                 currentPhase = data.league_phase;
                 document.getElementById('engine-phase').innerText = currentPhase + " PHASE";
                 document.getElementById('engine-phase').style.color = currentPhase === 'BETTING' ? 'var(--accent-green)' : 'var(--danger-red)';
                 document.getElementById('engine-round').innerText = data.current_round;
                 document.getElementById('engine-timer').innerText = data.time_remaining;
 
-                // Render Aviator Dynamic Frame State
                 const avCard = document.getElementById('av-card');
                 const avBtn = document.getElementById('aviator-btn');
                 avCard.innerText = data.aviator.multiplier.toFixed(2) + "x";
@@ -446,7 +436,6 @@
                     }
                 }
 
-                // Process Separate Simulations Output (Italian & English)
                 renderFixtures(data.live_matches);
                 renderLogs(data.match_logs);
                 renderMySlips(data.my_slips);
@@ -457,9 +446,7 @@
     function renderFixtures(matches) {
         const italianBox = document.getElementById('italian-fixtures');
         const englishBox = document.getElementById('english-fixtures');
-        
-        let itHtml = '';
-        let enHtml = '';
+        let itHtml = ''; let enHtml = '';
 
         matches.forEach(m => {
             const isLive = m.status === 'LIVE' || currentPhase === 'LIVE';
@@ -479,9 +466,7 @@
                     </div>
                 </div>
             `;
-
-            if (m.league === 'ITALIAN') itHtml += row;
-            else enHtml += row;
+            if (m.league === 'ITALIAN') itHtml += row; else enHtml += row;
         });
 
         italianBox.innerHTML = itHtml || '<p style="font-size:12px; color:var(--text-muted);">No simulation data loaded.</p>';
@@ -489,32 +474,21 @@
     }
 
     function selectOdd(matchId, prediction, odds, teams) {
-        if (currentPhase !== 'BETTING') {
-            alert("Market locked! Current simulation round is live running.");
-            return;
-        }
-        
-        // Remove selection row conflict if existing
+        if (currentPhase !== 'BETTING') { alert("Market locked! Round is live running."); return; }
         activeSelections = activeSelections.filter(s => s.match_id !== matchId);
         activeSelections.push({ match_id: matchId, prediction: prediction, odds: odds, teams: teams });
-        
         updateBetslipUI();
     }
 
     function updateBetslipUI() {
         const box = document.getElementById('slip-selections');
         const totals = document.getElementById('slip-totals');
-        
         if (activeSelections.length === 0) {
             box.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center;">Click match market odds to build selection.</p>';
-            totals.style.display = 'none';
-            return;
+            totals.style.display = 'none'; return;
         }
-
-        let html = '';
-        let totalOdds = 1.0;
-        
-        activeSelections.forEach((s, idx) => {
+        let html = ''; let totalOdds = 1.0;
+        activeSelections.forEach(s => {
             totalOdds *= s.odds;
             html += `
                 <div class="slip-item">
@@ -522,13 +496,11 @@
                         <span>${s.teams}</span>
                         <span onclick="removeSelection(${s.match_id})" style="color:var(--danger-red); cursor:pointer;">✕</span>
                     </div>
-                    <div style="margin-top:4px; color:var(--accent-green);">Selection Market: [${s.prediction}] @ ${s.odds.toFixed(2)}</div>
+                    <div style="margin-top:4px; color:var(--accent-green);">Selection: [${s.prediction}] @ ${s.odds.toFixed(2)}</div>
                 </div>
             `;
         });
-
-        box.innerHTML = html;
-        totals.style.display = 'block';
+        box.innerHTML = html; totals.style.display = 'block';
         document.getElementById('slip-odds').innerText = totalOdds.toFixed(2);
     }
 
@@ -538,58 +510,51 @@
     }
 
     function submitSportsBetslip() {
-        const stakeInput = document.getElementById('sports-stake');
-        const stake = parseFloat(stakeInput.value);
-        
-        if (activeSelections.length === 0) {
-            alert("Wager cancellation error: Selection slip is empty.");
-            return;
-        }
+        const stake = parseFloat(document.getElementById('sports-stake').value);
+        if (activeSelections.length === 0) { alert("Selection slip is empty."); return; }
 
         fetch('/api/sports/bet', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ selections: activeSelections, stake: stake })
-        })
-        .then(res => res.json())
-        .then(data => {
+        }).then(res => res.json()).then(data => {
             alert(data.message);
-            if (data.success) {
-                activeSelections = [];
-                updateBetslipUI();
-                updateDashboard();
-            }
+            if (data.success) { activeSelections = []; updateBetslipUI(); updateDashboard(); }
         });
     }
 
     function handleAviatorAction() {
         const btnText = document.getElementById('aviator-btn').innerText;
-        const stake = parseFloat(document.getElementById('aviator-stake').value);
-
         if (btnText.includes("PLACE")) {
+            const stake = parseFloat(document.getElementById('aviator-wager').value);
+            const autoRateInput = document.getElementById('aviator-auto-rate').value;
+            const autoCashout = autoRateInput ? parseFloat(autoRateInput) : null;
+
             fetch('/api/aviator/bet', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ stake: stake })
-            }).then(res => res.json()).then(data => { if (!data.success) alert("Wager verification rejected."); });
+                body: JSON.stringify({ stake: stake, auto_cashout: autoCashout })
+            }).then(res => res.json()).then(data => { 
+                if (!data.success) alert("Wager verification rejected."); 
+                else updateDashboard();
+            });
         } else if (btnText.includes("CASH")) {
             fetch('/api/aviator/cashout', { method: 'POST' })
             .then(res => res.json())
-            .then(data => { if (data.success) alert("Success! Secure payout won: " + data.winnings.toFixed(2) + " KSH"); });
+            .then(data => { 
+                if (data.success) alert("Payout secured: " + data.winnings.toFixed(2) + " KSH"); 
+                updateDashboard();
+            });
         }
     }
 
     function renderLogs(logs) {
-        const box = document.getElementById('match-logs');
-        box.innerHTML = logs.reverse().map(l => `<div class="log-entry">${l}</div>`).join('');
+        document.getElementById('match-logs').innerHTML = logs.reverse().map(l => `<div class="log-entry">${l}</div>`).join('');
     }
 
     function renderMySlips(slips) {
         const box = document.getElementById('my-slips');
-        if (!slips || slips.length === 0) {
-            box.innerHTML = '<div style="color:var(--text-muted);">No archived wagers.</div>';
-            return;
-        }
+        if (!slips || slips.length === 0) { box.innerHTML = '<div style="color:var(--text-muted);">No archived wagers.</div>'; return; }
         box.innerHTML = slips.reverse().map(s => {
             let color = 'white';
             if (s.status === 'WON') color = 'var(--accent-green)';
@@ -604,22 +569,16 @@
     function renderCombinedStandings(it, en) {
         const body = document.getElementById('standings-body');
         let html = `<tr><td colspan="6" style="background:#1a2634; color:var(--accent-blue); font-weight:bold; text-align:center;">ITALIAN LEAGUE</td></tr>`;
-        
-        const sortedIt = Object.entries(it).sort((a,b) => b[1].points - a[1].points);
-        sortedIt.forEach(([team, stats]) => {
+        Object.entries(it).sort((a,b) => b[1].points - a[1].points).forEach(([team, stats]) => {
             html += `<tr><td>${team}</td><td>${stats.played}</td><td>${stats.won}</td><td>${stats.draw}</td><td>${stats.lost}</td><td style="color:var(--accent-green); font-weight:bold;">${stats.points}</td></tr>`;
         });
-
         html += `<tr><td colspan="6" style="background:#1a2634; color:var(--accent-blue); font-weight:bold; text-align:center;">ENGLISH LEAGUE</td></tr>`;
-        const sortedEn = Object.entries(en).sort((a,b) => b[1].points - a[1].points);
-        sortedEn.forEach(([team, stats]) => {
+        Object.entries(en).sort((a,b) => b[1].points - a[1].points).forEach(([team, stats]) => {
             html += `<tr><td>${team}</td><td>${stats.played}</td><td>${stats.won}</td><td>${stats.draw}</td><td>${stats.lost}</td><td style="color:var(--accent-green); font-weight:bold;">${stats.points}</td></tr>`;
         });
-
         body.innerHTML = html;
     }
 
-    // Initialize 1-second interval loop update synchronization
     setInterval(updateDashboard, 1000);
     updateDashboard();
 </script>
