@@ -2,262 +2,236 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Professional League Dashboard</title>
+    <title>SwiftPitch - League Dashboard</title>
     <style>
-        body { background-color: #0b1118; color: #ffffff; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #121b26; padding: 15px 25px; border-radius: 10px; border: 1px solid #1c2a39; margin-bottom: 25px; }
-        .logo { font-size: 22px; font-weight: bold; color: #00ff66; letter-spacing: 1px; }
-        .wallet-display { font-size: 16px; color: #88a0b0; display: flex; gap: 20px; align-items: center; }
-        .balance-highlight { color: #00ff66; font-weight: bold; }
-        .house-highlight { color: #ffcc00; font-weight: bold; }
+        body { background-color: #0b1118; color: #ffffff; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; background: #121b26; padding: 15px 25px; border-radius: 8px; border: 1px solid #1c2a39; margin-bottom: 20px; }
+        .logo { font-size: 20px; font-weight: bold; color: #00ff66; }
+        .wallet-panel { display: flex; gap: 20px; align-items: center; font-size: 15px; }
+        .highlight { color: #00ff66; font-weight: bold; }
+        .vault-box { display: none; background: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; padding: 4px 10px; border-radius: 4px; color: #ffcc00; }
         
-        #vault-container { display: none; background-color: rgba(255, 204, 0, 0.1); padding: 5px 12px; border-radius: 6px; border: 1px solid #ffcc00; }
+        .layout-grid { display: grid; grid-template-columns: 400px 1fr 300px; gap: 20px; }
+        @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
         
-        .dashboard-grid { display: grid; grid-template-columns: 420px 1fr 320px; gap: 20px; }
-        @media (max-width: 1200px) { .dashboard-grid { grid-template-columns: 1fr; } }
-        .card { background-color: #121b26; border-radius: 10px; padding: 20px; border: 1px solid #1c2a39; margin-bottom: 20px; }
-        h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 10px; color: #88a0b0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card { background: #121b26; border-radius: 8px; padding: 20px; border: 1px solid #1c2a39; margin-bottom: 20px; }
+        h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 8px; color: #88a0b0; font-size: 13px; text-transform: uppercase; }
         
-        /* Scroll Containers for Simultaneous Live Round Feeds */
-        .scroll-panel-live { max-height: 480px; overflow-y: auto; padding-right: 5px; }
-        .scroll-panel-pending { max-height: 180px; overflow-y: auto; padding-right: 5px; }
+        .scroll-window { max-height: 400px; overflow-y: auto; }
+        .match-row { display: flex; justify-content: space-between; align-items: center; background: #0b1118; padding: 10px; border-radius: 5px; margin-bottom: 8px; border: 1px solid #1c2a39; }
+        .score-badge { background: #1c2a39; padding: 3px 8px; border-radius: 4px; color: #00ff66; font-family: monospace; font-weight: bold; }
         
-        .aviator-container { text-align: center; border: 2px solid #ff3333; background: linear-gradient(180deg, #121b26 0%, #201111 100%); }
-        .multiplier-text { font-size: 58px; font-weight: 900; color: #ff3333; margin: 15px 0; font-family: monospace; text-shadow: 0 0 15px rgba(255,51,51,0.4); }
-        .phase-badge { background-color: rgba(255, 51, 51, 0.1); color: #ff3333; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .aviator-box { text-align: center; border: 2px solid #ff3333; background: linear-gradient(180deg, #121b26 0%, #221111 100%); }
+        .mult-display { font-size: 50px; font-weight: bold; color: #ff3333; margin: 10px 0; font-family: monospace; }
         
-        input[type="number"] { width: 100%; padding: 12px; background-color: #0b1118; border: 1px solid #1c2a39; border-radius: 6px; color: white; margin-bottom: 12px; box-sizing: border-box; font-size: 16px; text-align: center; }
-        button { width: 100%; padding: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; text-transform: uppercase; }
-        .btn-success { background-color: #00ff66; color: #0b1118; }
-        .btn-danger { background-color: #ff3333; color: white; }
-        .btn-warn { background-color: #ff9900; color: white; }
-        .btn-blue { background-color: #00ccff; color: #0b1118; }
+        input[type="number"] { width: 100%; padding: 10px; background: #0b1118; border: 1px solid #1c2a39; color: white; margin-bottom: 10px; box-sizing: border-box; text-align: center; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 8px; }
+        .btn-green { background: #00ff66; color: #0b1118; }
+        .btn-orange { background: #ff9900; color: white; }
+        .btn-blue { background: #00ccff; color: #0b1118; }
         
-        .match-row { display: flex; justify-content: space-between; align-items: center; background-color: #0b1118; padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #1c2a39; }
-        .league-tag { font-size: 9px; padding: 2px 5px; border-radius: 4px; font-weight: bold; }
-        .score-box { background-color: #1c2a39; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: #00ff66; font-family: monospace; min-width: 35px; text-align: center; }
-        table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 13px; }
-        th, td { padding: 6px 6px; text-align: left; border-bottom: 1px solid #1c2a39; }
-        th { color: #88a0b0; }
-        .admin-deck { border: 2px dashed #ff3333; background-color: rgba(255, 51, 51, 0.05); display: none; }
-        .round-counter-badge { float: right; background: #00ff66; color: #0b1118; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 6px; text-align: left; border-bottom: 1px solid #1c2a39; }
+        
+        .admin-deck { border: 2px dashed #ff3333; background: rgba(255,51,51,0.05); display: none; margin-bottom: 20px; padding: 15px; border-radius: 8px; }
     </style>
 </head>
 <body>
 
 <div class="navbar">
     <div class="logo">SWIFTPITCH SCORECENTER</div>
-    <div class="wallet-display">
-        <div id="vault-container">🛡️ Vault Liquidity: <span class="house-highlight" id="house-balance">0.00</span> KSH</div>
-        <div>Wallet Balance: <span class="balance-highlight" id="user-balance">0.00</span> KSH <span id="bonus-wrapper"></span></div>
-        <div><a href="/logout" style="color: #ff3333; text-decoration: none; font-weight: bold;">Logout</a></div>
+    <div class="wallet-panel">
+        <div class="vault-box" id="admin-vault-display">🛡️ Vault: <span id="house-bal">0.00</span> KSH</div>
+        <div>Wallet: <span class="highlight" id="user-bal">0.00</span> KSH <span id="bonus-box"></span></div>
+        <a href="/logout" style="color: #ff3333; text-decoration: none; font-weight: bold;">Logout</a>
     </div>
 </div>
 
-<div class="card admin-deck" id="admin-panel">
-    <h3 style="color: #ff3333;">🛡️ Administrative Controls Panel</h3>
-    <div style="display: flex; gap: 15px;">
-        <button class="btn-success" onclick="setSimulationState(true)">RESUME SIMULATION MATCHDAYS</button>
-        <button class="btn-danger" onclick="setSimulationState(false)">SUSPEND SIMULATION MATCHDAYS</button>
+<div class="admin-deck" id="admin-controls">
+    <h4 style="margin:0 0 10px 0; color:#ff3333;">🛡️ System Operator Controls</h4>
+    <div style="display: flex; gap: 10px;">
+        <button class="btn-green" onclick="sendSimToggle(true)">Start Simulation Rounds</button>
+        <button class="btn-orange" onclick="sendSimToggle(false)">Halt Simulation Rounds</button>
     </div>
 </div>
 
-<div class="dashboard-grid">
-    
+<div class="layout-grid">
+    <!-- WAGERS & FIXTURES -->
     <div>
-        <div class="card aviator-container">
-            <span class="phase-badge" id="aviator-phase">Stakes Pending</span>
-            <div class="multiplier-text" id="aviator-mult">1.00x</div>
-            <div style="max-width: 280px; margin: 0 auto;">
-                <input type="number" id="aviator-stake" value="50" min="10">
-                <button id="aviator-bet-btn" class="btn-success" onclick="placeAviatorBet()">PLACE AVIATOR BET</button>
-                <button id="aviator-cashout-btn" class="btn-warn" onclick="cashoutAviatorBet()" style="display: none;">💰 CASH OUT NOW</button>
-            </div>
+        <div class="card aviator-box">
+            <span style="color:#ff3333; font-size:11px; font-weight:bold;" id="av-phase">LOADING</span>
+            <div class="mult-display" id="av-mult">1.00x</div>
+            <input type="number" id="av-stake-input" value="50" min="10">
+            <button class="btn-green" id="btn-av-bet" onclick="fireAviatorBet()">Place Wager</button>
+            <button class="btn-orange" id="btn-av-cash" onclick="fireAviatorCashout()" style="display:none;">Cash Out</button>
         </div>
 
         <div class="card">
-            <h3>⚽ Live Active Matchday <span class="round-counter-badge" id="round-idx">ROUND 1</span></h3>
-            <div class="scroll-panel-live" id="live-matches-container">Connecting...</div>
-            
-            <h3 style="margin-top: 25px;">⏳ Coming Up Next Round</h3>
-            <div class="scroll-panel-pending" id="pending-matches-container">Generating schedules...</div>
+            <h3>⚽ Live Simultaneous Fixtures (<span id="round-lbl">Round 1</span>)</h3>
+            <div class="scroll-window" id="live-matches"></div>
         </div>
     </div>
 
+    <!-- LEAGUE MATRIX INSTANCES -->
     <div>
         <div class="card">
-            <h3 style="color: #00ccff;">🇮🇹 Italian Serie A Standings</h3>
-            <div style="max-height: 230px; overflow-y: auto;">
+            <h3 style="color:#00ccff;">🇮🇹 Italian Serie A Standings</h3>
+            <div style="max-height: 200px; overflow-y:auto;">
                 <table>
                     <thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead>
-                    <tbody id="italian-table-body"></tbody>
+                    <tbody id="ita-tbody"></tbody>
                 </table>
             </div>
         </div>
 
         <div class="card">
-            <h3 style="color: #ffcc00;">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier League Standings</h3>
-            <div style="max-height: 230px; overflow-y: auto;">
+            <h3 style="color:#ffcc00;">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier League Standings</h3>
+            <div style="max-height: 200px; overflow-y:auto;">
                 <table>
                     <thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead>
-                    <tbody id="english-table-body"></tbody>
+                    <tbody id="eng-tbody"></tbody>
                 </table>
             </div>
         </div>
 
         <div class="card">
-            <h3>📜 Historic Results Log</h3>
-            <div id="match-logs" style="max-height: 100px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #88a0b0;"></div>
+            <h3>📜 Matchday Events Ledger</h3>
+            <div id="logs-box" style="height:80px; overflow-y:auto; font-family:monospace; font-size:11px; color:#88a0b0; line-height:1.4;"></div>
         </div>
     </div>
 
+    <!-- BANKING STATION -->
     <div>
         <div class="card">
-            <h3>💳 Secure Banking Desk</h3>
+            <h3>💳 Safe Banking Terminal</h3>
             <form action="/deposit" method="POST" style="margin-bottom: 15px;">
-                <input type="number" name="amount" min="10" placeholder="Deposit Amount (Min 10)" required>
-                <button type="submit" class="btn-blue">DEPOSIT SYSTEM</button>
+                <input type="number" name="amount" min="10" placeholder="Deposit (Min 10 KSH)" required>
+                <button type="submit" class="btn-blue">Execute Deposit</button>
             </form>
             <form action="/withdraw" method="POST">
-                <input type="number" name="amount" min="100" placeholder="Withdrawal Amount (Min 100)" required>
-                <button type="submit" class="btn-warn">WITHDRAW FUNDS</button>
+                <input type="number" name="amount" min="100" placeholder="Withdraw (Min 100 KSH)" required>
+                <button type="submit" class="btn-orange">Execute Withdrawal</button>
             </form>
         </div>
     </div>
 </div>
 
 <script>
-    let localAviatorBetActive = false;
+    let dynamicWagerPlaced = false;
 
     setInterval(() => {
         fetch('/api/state')
-        .then(res => res.json())
+        .then(r => r.json())
         .then(data => {
-            document.getElementById('user-balance').innerText = data.user_balance.toFixed(2);
-            document.getElementById('round-idx').innerText = 'ROUND ' + data.current_round;
+            document.getElementById('user-bal').innerText = data.user_balance.toFixed(2);
+            document.getElementById('round-lbl').innerText = 'ROUND ' + data.current_round;
             
-            if (data.user_role === 'admin') {
-                document.getElementById('admin-panel').style.display = 'block';
-                document.getElementById('vault-container').style.display = 'block';
-                document.getElementById('house-balance').innerText = data.house_balance.toFixed(2);
+            // Dynamic Security Checks
+            if(data.user_role === 'admin') {
+                document.getElementById('admin-controls').style.display = 'block';
+                document.getElementById('admin-vault-display').style.display = 'block';
+                document.getElementById('house-bal').innerText = data.house_balance.toFixed(2);
             } else {
-                document.getElementById('admin-panel').style.display = 'none';
-                document.getElementById('vault-container').style.display = 'none';
-            }
-            
-            if (data.user_bonus_locked) {
-                document.getElementById('bonus-wrapper').innerHTML = `(<span style="color:#ff3333; font-size:12px;">Locked: ${data.user_bonus} KSH</span>)`;
-            } else {
-                document.getElementById('bonus-wrapper').innerHTML = '';
+                document.getElementById('admin-controls').style.display = 'none';
+                document.getElementById('admin-vault-display').style.display = 'none';
             }
 
-            // Aviator State Switches
-            const av = data.aviator;
-            document.getElementById('aviator-mult').innerText = av.multiplier.toFixed(2) + 'x';
-            document.getElementById('aviator-phase').innerText = av.phase + ' PHASE';
-
-            if (av.phase === 'BETTING') {
-                localAviatorBetActive = false;
-                document.getElementById('aviator-bet-btn').style.display = 'block';
-                document.getElementById('aviator-bet-btn').disabled = false;
-                document.getElementById('aviator-cashout-btn').style.display = 'none';
-            } else if (av.phase === 'FLYING' && localAviatorBetActive) {
-                document.getElementById('aviator-bet-btn').style.display = 'none';
-                document.getElementById('aviator-cashout-btn').style.display = 'block';
+            if(data.user_bonus_locked) {
+                document.getElementById('bonus-box').innerHTML = `(<span style="color:#ff3333; font-size:11px;">Locked: ${data.user_bonus} KSH</span>)`;
             } else {
-                if(!localAviatorBetActive) {
-                    document.getElementById('aviator-bet-btn').style.display = 'block';
-                    document.getElementById('aviator-bet-btn').disabled = true;
-                    document.getElementById('aviator-cashout-btn').style.display = 'none';
+                document.getElementById('bonus-box').innerHTML = '';
+            }
+
+            // Aviator Render State Switch
+            document.getElementById('av-mult').innerText = data.aviator.multiplier.toFixed(2) + 'x';
+            document.getElementById('av-phase').innerText = data.aviator.phase + ' TIMELINE';
+
+            if(data.aviator.phase === 'BETTING') {
+                dynamicWagerPlaced = false;
+                document.getElementById('btn-av-bet').style.display = 'block';
+                document.getElementById('btn-av-bet').disabled = false;
+                document.getElementById('btn-av-cash').style.display = 'none';
+            } else if(data.aviator.phase === 'FLYING' && dynamicWagerPlaced) {
+                document.getElementById('btn-av-bet').style.display = 'none';
+                document.getElementById('btn-av-cash').style.display = 'block';
+            } else {
+                if(!dynamicWagerPlaced) {
+                    document.getElementById('btn-av-bet').style.display = 'block';
+                    document.getElementById('btn-av-bet').disabled = true;
+                    document.getElementById('btn-av-cash').style.display = 'none';
                 }
             }
 
-            // Render Round Matches
-            let liveHtml = '';
+            // Render Fixtures Lookups
+            let htmlFix = '';
             data.live_matches.forEach(m => {
-                let borderCol = m.league === 'ITALIAN' ? '#00ccff' : '#ffcc00';
-                let tagBg = m.league === 'ITALIAN' ? '#00ccff22' : '#ffcc0022';
-                let statusTxt = m.minute >= 90 ? '<span style="color:#ff3333;">FT</span>' : `Min: ${m.minute}'`;
-                
-                liveHtml += `
-                    <div class="match-row" style="border-left: 4px solid ${borderCol}">
-                        <div><span class="league-tag" style="background:${tagBg}; color:${borderCol}">${m.league}</span><br><strong>${m.teams}</strong></div>
-                        <div style="text-align:right;"><span class="score-box">${m.score}</span><br><span style="color:#00ff66; font-size:11px;">${statusTxt}</span></div>
+                let border = m.league === 'ITALIAN' ? '#00ccff' : '#ffcc00';
+                let timeText = m.minute >= 90 ? '<span style="color:#ff3333;font-weight:bold;">FT</span>' : `Min ${m.minute}'`;
+                htmlFix += `
+                    <div class="match-row" style="border-left: 3px solid ${border}">
+                        <div><span style="font-size:9px; color:${border}; font-weight:bold;">${m.league}</span><br><strong>${m.teams}</strong></div>
+                        <div style="text-align:right;"><span class="score-badge">${m.score}</span><br><span style="font-size:11px;">${timeText}</span></div>
                     </div>`;
             });
-            document.getElementById('live-matches-container').innerHTML = liveHtml;
+            document.getElementById('live-matches').innerHTML = htmlFix;
 
-            let pendHtml = '';
-            if(data.pending_matches.length === 0) {
-                pendHtml = '<div class="match-row" style="opacity:0.5;"><strong>Final Matchday of Season Active</strong></div>';
-            } else {
-                data.pending_matches.forEach(m => {
-                    let borderCol = m.league === 'ITALIAN' ? '#00ccff' : '#ffcc00';
-                    pendHtml += `<div class="match-row" style="opacity:0.5; border-left: 4px solid ${borderCol};"><div><strong>${m.teams}</strong></div></div>`;
-                });
+            // Render Standings Grid Matrices
+            buildTableRows(data.standings_italian, 'ita-tbody', '#00ccff');
+            buildTableRows(data.standings_english, 'eng-tbody', '#ffcc00');
+
+            if(data.match_logs.length > 0) {
+                document.getElementById('logs-box').innerHTML = data.match_logs.slice().reverse().join('<br>');
             }
-            document.getElementById('pending-matches-container').innerHTML = pendHtml;
-
-            // Render League Standings Structures
-            let itArr = Object.keys(data.standings_italian).map(name => ({name, ...data.standings_italian[name]}));
-            itArr.sort((a,b) => b.points - a.points);
-            let itHtml = '';
-            itArr.forEach(t => {
-                itHtml += `<tr><td><strong>${t.name}</strong></td><td>${t.played}</td><td>${t.won}</td><td>${t.draw}</td><td>${t.lost}</td><td style="color:#00ccff;font-weight:bold;">${t.points}</td></tr>`;
-            });
-            document.getElementById('italian-table-body').innerHTML = itHtml;
-
-            let enArr = Object.keys(data.standings_english).map(name => ({name, ...data.standings_english[name]}));
-            enArr.sort((a,b) => b.points - a.points);
-            let enHtml = '';
-            enArr.forEach(t => {
-                enHtml += `<tr><td><strong>${t.name}</strong></td><td>${t.played}</td><td>${t.won}</td><td>${t.draw}</td><td>${t.lost}</td><td style="color:#ffcc00;font-weight:bold;">${t.points}</td></tr>`;
-            });
-            document.getElementById('english-table-body').innerHTML = enHtml;
-
-            if(data.match_logs.length > 0) document.getElementById('match-logs').innerHTML = data.match_logs.slice().reverse().join('<br>');
         });
-    }, 500);
+    }, 600);
 
-    function placeAviatorBet() {
-        const stake = document.getElementById('aviator-stake').value;
+    function buildTableRows(standingsMap, containerId, accentColor) {
+        let sorted = Object.keys(standingsMap).map(name => ({name, ...standingsMap[name]})).sort((a,b) => b.points - a.points);
+        let rowsHtml = '';
+        sorted.forEach(t => {
+            rowsHtml += `<tr><td><strong>${t.name}</strong></td><td>${t.played}</td><td>${t.won}</td><td>${t.draw}</td><td>${t.lost}</td><td style="color:${accentColor}; font-weight:bold;">${t.points}</td></tr>`;
+        });
+        document.getElementById(containerId).innerHTML = rowsHtml;
+    }
+
+    function fireAviatorBet() {
+        const val = document.getElementById('av-stake-input').value;
         fetch('/api/aviator/bet', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ stake: parseFloat(stake) })
+            body: JSON.stringify({ stake: parseFloat(val) })
         })
-        .then(res => res.json())
+        .then(r => r.json())
         .then(d => {
-            if (d.success) {
-                localAviatorBetActive = true;
-                alert("Aviator wager secured! Waiting for takeoff...");
+            if(d.success) {
+                dynamicWagerPlaced = true;
+                alert("Wager logged successfully!");
             } else {
-                alert("Unable to process bet. Minimum wager is 10 KSH.");
+                alert("Insufficient funds or window closed.");
             }
         });
     }
 
-    function cashoutAviatorBet() {
+    function fireAviatorCashout() {
         fetch('/api/aviator/cashout', { method: 'POST' })
-        .then(res => res.json())
+        .then(r => r.json())
         .then(d => {
-            if (d.success) {
-                localAviatorBetActive = false;
-                alert("Successfully Cashed Out!");
+            if(d.success) {
+                dynamicWagerPlaced = false;
+                alert(`Casouht Successful! Won: ${d.winnings.toFixed(2)} KSH`);
             } else {
-                alert("Cashout window missed!");
+                alert("Crash sequence completed already!");
             }
         });
     }
 
-    function setSimulationState(runFlag) {
+    function sendSimToggle(flag) {
         fetch('/admin/toggle', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ run: runFlag })
+            body: JSON.stringify({ run: flag })
         })
-        .then(res => res.json());
+        .then(r => r.json());
     }
 </script>
 </body>
