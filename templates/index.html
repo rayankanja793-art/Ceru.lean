@@ -32,7 +32,11 @@
         .mult-display { font-size: 56px; font-weight: bold; color: #ff3344; margin: 15px 0; font-family: monospace; text-shadow: 0 0 10px rgba(255,51,68,0.3); }
         
         input[type="number"] { width: 100%; padding: 12px; background: #0b1118; border: 1px solid #1c2a39; color: white; margin-bottom: 10px; box-sizing: border-box; text-align: center; font-weight: bold; font-size: 15px; border-radius: 4px; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        
+        button { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
+        /* Style adjustments for locked state buttons */
+        button:disabled { background: #232d38 !important; color: #607585 !important; cursor: not-allowed !important; border: 1px solid #1c2a39 !important; }
+        
         .btn-green { background: #00ff66; color: #0b1118; }
         .btn-orange { background: #ff9900; color: white; }
         .btn-blue { background: #00ccff; color: #0b1118; }
@@ -49,7 +53,7 @@
 <div class="navbar">
     <div class="logo">🦅 SWIFTPITCH ACCELERATOR</div>
     <div class="wallet-panel">
-        <div>Wallet Asset Balance: <span class="highlight" id="user-bal">0.00</span> KSH <span id="bonus-box"></span></div>
+        <span id="admin-vault-container"></span> <div>Wallet Asset Balance: <span class="highlight" id="user-bal">0.00</span> KSH</div>
         <span id="admin-link-placeholder"></span>
         <a href="/logout" style="color: #ff3344; text-decoration: none; font-weight: bold; font-size: 14px;">Logout Space</a>
     </div>
@@ -105,8 +109,9 @@
             <span style="color:#ff3344; font-size:11px; font-weight:bold; letter-spacing:1px;" id="av-phase">AVIATOR SYSTEM</span>
             <div class="mult-display" id="av-mult">1.00x</div>
             <input type="number" id="av-stake-input" value="100" min="10">
+            
             <button class="btn-green" id="btn-av-bet" onclick="fireAviatorBet()">Place Flight Wager</button>
-            <button class="btn-orange" id="btn-av-cash" onclick="fireAviatorCashout()" style="display:none;">Cash Out Winnings</button>
+            <button class="btn-orange" id="btn-av-cash" onclick="fireAviatorCashout()" style="display:none; background:#ff9900;">Cash Out</button>
         </div>
 
         <div class="card">
@@ -129,14 +134,10 @@
 </div>
 
 <script>
-    let activeBetslip = []; // Dynamic store for tracking multi-bet configurations
-    let aviatorWagerActive = false;
+    let activeBetslip = []; 
 
     function toggleSelectionToSlip(matchId, pred, odds, teamsText) {
-        // Remove existing prediction for the exact same match ID if present
         activeBetslip = activeBetslip.filter(item => item.matchId !== matchId);
-        
-        // Push selection profile
         activeBetslip.push({ matchId, pred, odds, teamsText });
         renderBetslipUI();
     }
@@ -154,12 +155,10 @@
     function renderBetslipUI() {
         const container = document.getElementById('slip-selections-container');
         const card = document.getElementById('multibet-card');
-        
         if(activeBetslip.length === 0) {
             card.style.display = 'none';
             return;
         }
-        
         card.style.display = 'block';
         let html = '';
         let totalOdds = 1.0;
@@ -174,7 +173,6 @@
                     <span style="color:#00ccff;">Selection: ${outcomeLabel} @ ${item.odds.toFixed(2)}</span>
                 </div>`;
         });
-        
         container.innerHTML = html;
         document.getElementById('slip-total-odds').innerText = totalOdds.toFixed(2) + 'x';
     }
@@ -191,9 +189,7 @@
         .then(r => r.json())
         .then(d => {
             alert(d.message);
-            if(d.success) {
-                clearBetslip();
-            }
+            if(d.success) clearBetslip();
         });
     }
 
@@ -204,7 +200,16 @@
         .then(data => {
             document.getElementById('user-bal').innerText = data.user_balance.toFixed(2);
             
-            // Format state header messages dynamically
+            // Administrative Data Masking Check
+            if (data.user_role === 'admin' && data.house_balance !== null) {
+                document.getElementById('admin-vault-container').innerHTML = `Vault: <span style="color:#ffcc00; font-weight:bold;">${data.house_balance.toFixed(2)}</span> KSH | `;
+                document.getElementById('admin-link-placeholder').innerHTML = '<a href="/admin" style="color:#ffcc00; text-decoration:none; margin-right:15px; font-weight:bold; font-size:14px;">⚙️ Admin Core</a>';
+            } else {
+                document.getElementById('admin-vault-container').innerHTML = '';
+                document.getElementById('admin-link-placeholder').innerHTML = '';
+            }
+
+            // Sync Phase Metrics
             if (data.league_phase === 'BETTING') {
                 document.getElementById('phase-title').innerText = `ROUND ${data.current_round} - OPEN FOR WAGERS`;
                 document.getElementById('phase-title').style.color = '#00ff66';
@@ -217,36 +222,45 @@
                 document.getElementById('phase-countdown').style.color = '#ff9900';
             }
 
-            if(data.user_role === 'admin') {
-                document.getElementById('admin-link-placeholder').innerHTML = '<a href="/admin" style="color:#ffcc00; text-decoration:none; margin-right:15px; font-weight:bold; font-size:14px;">⚙️ Admin Core</a>';
-            }
-
-            // Aviator Real-time Layout Handles
+            // Aviator Flight Engine Display Logic
             document.getElementById('av-mult').innerText = data.aviator.multiplier.toFixed(2) + 'x';
             document.getElementById('av-phase').innerText = data.aviator.phase + ' TIMELINE';
 
-            if(data.aviator.phase === 'BETTING') {
-                aviatorWagerActive = false;
-                document.getElementById('btn-av-bet').style.display = 'block';
-                document.getElementById('btn-av-bet').disabled = false;
-                document.getElementById('btn-av-cash').style.display = 'none';
-            } else if(data.aviator.phase === 'FLYING' && aviatorWagerActive) {
-                document.getElementById('btn-av-bet').style.display = 'none';
-                document.getElementById('btn-av-cash').style.display = 'block';
-            } else if(data.aviator.phase === 'FLYING' && !aviatorWagerActive) {
-                document.getElementById('btn-av-bet').style.display = 'block';
-                document.getElementById('btn-av-bet').disabled = true;
-                document.getElementById('btn-av-cash').style.display = 'none';
+            const betBtn = document.getElementById('btn-av-bet');
+            const cashBtn = document.getElementById('btn-av-cash');
+
+            if (data.aviator.phase === 'BETTING') {
+                cashBtn.style.display = 'none';
+                betBtn.style.display = 'block';
+                if (data.aviator.has_bet) {
+                    betBtn.disabled = true;
+                    betBtn.innerText = "WAGER ACCEPTED";
+                } else {
+                    betBtn.disabled = false;
+                    betBtn.innerText = "PLACE FLIGHT WAGER";
+                }
+            } else if (data.aviator.phase === 'FLYING') {
+                if (data.aviator.has_bet) {
+                    betBtn.style.display = 'none';
+                    cashBtn.style.display = 'block';
+                    // Live approximate payout preview string
+                    const stakeInput = parseFloat(document.getElementById('av-stake-input').value) || 0;
+                    cashBtn.innerText = `CASH OUT (${(stakeInput * data.aviator.multiplier).toFixed(0)} KSH)`;
+                } else {
+                    cashBtn.style.display = 'none';
+                    betBtn.style.display = 'block';
+                    betBtn.disabled = true;
+                    betBtn.innerText = "FLIGHT IN PROGRESS";
+                }
             }
 
-            // Construct and refresh active Match View Row maps
+            // Construct Active Match View Matrix
             let htmlFix = '';
             data.live_matches.forEach(m => {
                 let accent = m.league === 'ITALIAN' ? '#00ccff' : '#ffcc00';
                 let clockDisplay = data.league_phase === 'BETTING' ? 'Upcoming' : `Minute ${m.minute}'`;
                 let cleanTeamsName = m.teams.replace(/'/g, "\\'");
                 
-                // Track selected markers to visually stick active styling elements
                 let activeHome = activeBetslip.some(i => i.matchId === m.id && i.pred === '1') ? 'active-selection' : '';
                 let activeDraw = activeBetslip.some(i => i.matchId === m.id && i.pred === 'X') ? 'active-selection' : '';
                 let activeAway = activeBetslip.some(i => i.matchId === m.id && i.pred === '2') ? 'active-selection' : '';
@@ -270,19 +284,19 @@
             buildTableMatrix(data.standings_italian, 'ita-tbody', '#00ccff');
             buildTableMatrix(data.standings_english, 'eng-tbody', '#ffcc00');
 
-            // Render Slip Logs History
+            // Render Slips History Ledger
             let slipLogHtml = '';
             data.my_slips.forEach(s => {
                 let c = s.status === 'WON' ? '#00ff66' : (s.status === 'LOST' ? '#ff3344' : '#00ccff');
                 slipLogHtml += `
                     <div style="border-bottom:1px solid #1c2a39; padding:6px 0; line-height:1.4;">
                         <span style="font-size:9px; background:#1c2a39; padding:2px 4px; border-radius:3px;">${s.type}</span> 
-                        Odds: <strong>${s.total_odds}x</strong> | Stake: <strong>${s.stake} KSH</strong><br>
+                        Odds: <strong>${s.total_odds}x</strong> | Wager: <strong>${s.stake} KSH</strong><br>
                         <span style="color:#88a0b0; font-size:10px;">${s.desc}</span><br>
                         Status: <span style="color:${c}; font-weight:bold;">${s.status}</span>
                     </div>`;
             });
-            document.getElementById('my-slips-ledger').innerHTML = slipLogHtml || 'No slips found in this account instance.';
+            document.getElementById('my-slips-ledger').innerHTML = slipLogHtml || 'No slips recorded on this endpoint setup.';
         });
     }, 700);
 
@@ -304,8 +318,7 @@
         })
         .then(r => r.json())
         .then(d => {
-            if(d.success) { aviatorWagerActive = true; alert("Aviator flight wager accepted."); }
-            else alert("Transaction rejected. Ensure the betting timeline is open.");
+            if(!d.success) alert("Transaction rejected. Confirm balance or open timeline.");
         });
     }
 
@@ -313,8 +326,8 @@
         fetch('/api/aviator/cashout', { method: 'POST' })
         .then(r => r.json())
         .then(d => {
-            if(d.success) { aviatorWagerActive = false; alert(`Cashout Successful! Payout Received: ${d.winnings.toFixed(2)} KSH`); }
-            else alert("Crash point threshold passed!");
+            if(d.success) alert(`Cashout Confirmed! Added ${d.winnings.toFixed(2)} KSH to balance.`);
+            else alert("Cashout rejected - plane already departed!");
         });
     }
 </script>
