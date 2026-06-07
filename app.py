@@ -126,7 +126,7 @@ def dynamic_engine_loop():
     dt = now - state['last_update']
     state['last_update'] = now
     
-    # Aviator Loop Cycle Execution
+    # --- AVIATOR CORE SIMULATION LOOP ---
     av_elapsed = now - state['aviator']['start']
     if state['aviator']['phase'] == 'BETTING' and av_elapsed > 12:
         state['aviator']['phase'] = 'FLYING'
@@ -134,6 +134,23 @@ def dynamic_engine_loop():
         state['aviator']['multiplier'] = 1.0
     elif state['aviator']['phase'] == 'FLYING':
         state['aviator']['multiplier'] += round(dt * 0.6, 2)
+        current_multiplier = state['aviator']['multiplier']
+        
+        # Process Auto Cash Out Parameters Before Crash Boundaries Execute
+        auto_cashed_users = []
+        for user_email, wager_info in state['aviator']['stakes'].items():
+            target = wager_info.get('auto_cashout')
+            if target and current_multiplier >= target:
+                winnings = wager_info['stake'] * target
+                if user_email in users:
+                    users[user_email]['balance'] += winnings
+                state['house_balance'] -= winnings
+                auto_cashed_users.append(user_email)
+                
+        for user_email in auto_cashed_users:
+            state['aviator']['stakes'].pop(user_email, None)
+
+        # Dynamic Break/Crash Threshold Check
         if state['aviator']['multiplier'] > random.uniform(1.15, 6.0):
             state['aviator']['phase'] = 'BETTING'
             state['aviator']['start'] = now
@@ -226,214 +243,4 @@ def finalize_and_settle_round():
 
 @app.route('/')
 def index():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    return render_template('index.html')
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if 'user' in session: 
-        return redirect(url_for('index'))
-    error = None
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        phone = request.form.get('phone')
-        
-        if not email or not password or not phone:
-            error = "All fields are required to register."
-        elif email in users:
-            error = "An account with that email already exists."
-        else:
-            with state_lock:
-                # Seed user with locked 100 KSH registration bonus
-                users[email] = {
-                    'password': password,
-                    'phone': phone,
-                    'balance': 0.0,
-                    'bonus': 100.0,
-                    'bonus_locked': True,
-                    'role': 'user'
-                }
-            return render_template('login.html', success_message="Account created! You received a 100 KSH welcome bonus. Secure a deposit of 50 KSH or more to activate it.")
-    return render_template('register.html', error=error)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if 'user' in session: return redirect(url_for('index'))
-    error = None
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        if email in users and users[email]['password'] == password:
-            session['user'] = email
-            return redirect(url_for('index'))
-        error = "Invalid credentials profile."
-    return render_template('login.html', error=error)
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-@app.route('/api/sports/bet', methods=['POST'])
-def place_sports_bet():
-    with state_lock:
-        user = users.get(session.get('user'))
-        if not user: return jsonify({'success': False, 'message': 'Unauthorized context'})
-        if state['league_phase'] != 'BETTING':
-            return jsonify({'success': False, 'message': 'Betslip locked! Matches are running.'})
-            
-        data = request.get_json() or {}
-        selections = data.get('selections', [])
-        stake = float(data.get('stake', 0))
-        
-        if len(selections) == 0: return jsonify({'success': False, 'message': 'Betslip empty'})
-        if stake < 10.0: return jsonify({'success': False, 'message': 'Minimum selection wager is 10 KSH'})
-        if user['balance'] < stake: return jsonify({'success': False, 'message': 'Insufficient account balance'})
-        
-        all_live = state['live_matches_italian'] + state['live_matches_english']
-        match_map = {m['id']: m for m in all_live}
-        
-        processed_selections = []
-        accumulated_odds = 1.0
-        seen_matches = set()
-        
-        for sel in selections:
-            mid = int(sel['match_id'])
-            pred = sel['prediction']
-            if mid in seen_matches: return jsonify({'success': False, 'message': 'Duplicate selections detected'})
-            seen_matches.add(mid)
-            
-            m = match_map.get(mid)
-            if not m: return jsonify({'success': False, 'message': 'Match scope expired'})
-            o = m['odds_home'] if pred == '1' else (m['odds_draw'] if pred == 'X' else m['odds_away'])
-            
-            accumulated_odds *= o
-            processed_selections.append({'match_id': mid, 'teams': m['teams'], 'prediction': pred, 'odds': o, 'status': 'PENDING'})
-            
-        user['balance'] -= stake
-        state['house_balance'] += stake
-        state['sports_bets'].append({
-            'user': session['user'], 'type': 'SINGLE' if len(processed_selections) == 1 else 'MULTI-BET',
-            'stake': stake, 'total_odds': round(accumulated_odds, 2), 'status': 'PENDING', 'selections': processed_selections
-        })
-        return jsonify({'success': True, 'message': 'Betslip placed successfully!'})
-
-@app.route('/api/aviator/bet', methods=['POST'])
-def aviator_bet():
-    with state_lock:
-        user = users.get(session.get('user'))
-        if not user or state['aviator']['phase'] != 'BETTING': return jsonify({'success': False})
-        data = request.get_json() or {}
-        stake = float(data.get('stake', 0))
-        if user['balance'] >= stake and stake >= 10.0:
-            user['balance'] -= stake
-            state['house_balance'] += stake
-            state['aviator']['stakes'][session['user']] = stake
-            return jsonify({'success': True})
-        return jsonify({'success': False})
-
-@app.route('/api/aviator/cashout', methods=['POST'])
-def aviator_cashout():
-    with state_lock:
-        user = users.get(session.get('user'))
-        if not user or state['aviator']['phase'] != 'FLYING': return jsonify({'success': False})
-        stake = state['aviator']['stakes'].pop(session['user'], None)
-        if stake:
-            winnings = stake * state['aviator']['multiplier']
-            user['balance'] += winnings
-            state['house_balance'] -= winnings
-            return jsonify({'success': True, 'winnings': winnings})
-        return jsonify({'success': False})
-
-@app.route('/deposit', methods=['POST'])
-def deposit():
-    with state_lock:
-        user = users.get(session.get('user'))
-        if user:
-            amount = float(request.form.get('amount', 0))
-            if amount >= 10.0:
-                user['balance'] += amount
-                state['house_balance'] += amount
-                # Unlock registration welcome balance if threshold parameters met
-                if user.get('bonus_locked') and amount >= 50.0:
-                    user['balance'] += user['bonus']
-                    user['bonus'] = 0.0
-                    user['bonus_locked'] = False
-    return redirect(url_for('index'))
-
-@app.route('/withdraw', methods=['POST'])
-def withdraw():
-    with state_lock:
-        user = users.get(session.get('user'))
-        if user and float(request.form.get('amount', 0)) >= 100.0:
-            amount = float(request.form.get('amount', 0))
-            if user['balance'] >= amount:
-                user['balance'] -= amount
-                state['house_balance'] -= amount
-    return redirect(url_for('index'))
-
-@app.route('/api/state')
-def get_state():
-    with state_lock:
-        dynamic_engine_loop()
-        curr_user = users.get(session.get('user'), {'role': 'user', 'balance': 0.0})
-        is_admin = curr_user.get('role') == 'admin'
-        
-        rem = (BETTING_WINDOW if state['league_phase'] == 'BETTING' else MATCH_WINDOW) - (time.time() - state['phase_start_time'])
-        
-        user_slips = []
-        for b in state['sports_bets']:
-            if b['user'] == session.get('user'):
-                user_slips.append({
-                    'type': b['type'], 'stake': b['stake'], 'total_odds': b['total_odds'], 'status': b['status'],
-                    'desc': ", ".join([f"{s['teams']} ({s['prediction']})" for s in b['selections']])
-                })
-                
-        return jsonify({
-            'house_balance': state['house_balance'] if is_admin else None, # Restricts vault parameter strictly to admin panel
-            'current_round': state['current_round'],
-            'league_phase': state['league_phase'],
-            'time_remaining': max(0, int(rem)),
-            'live_matches': state['live_matches_italian'] + state['live_matches_english'],
-            'match_logs': state['match_logs'][-8:],
-            'standings_italian': state['standings_italian'],
-            'standings_english': state['standings_english'],
-            'aviator': {
-                'phase': state['aviator']['phase'], 
-                'multiplier': state['aviator']['multiplier'],
-                'has_bet': session.get('user') in state['aviator']['stakes']
-            },
-            'user_balance': curr_user['balance'],
-            'user_bonus': curr_user.get('bonus', 0),
-            'user_bonus_locked': curr_user.get('bonus_locked', False),
-            'user_role': curr_user['role'],
-            'my_slips': user_slips[-5:]
-        })
-
-@app.route('/admin')
-def admin_dashboard():
-    if 'user' not in session: return redirect(url_for('login'))
-    curr_user = users.get(session['user'])
-    if not curr_user or curr_user.get('role') != 'admin': return "Unauthorized", 403
-    return render_template('admin.html', user=curr_user)
-
-@app.route('/admin/toggle', methods=['POST'])
-def toggle_sim():
-    with state_lock:
-        user = users.get(session.get('user'), {})
-        if user.get('role') != 'admin': return "Unauthorized", 403
-        data = request.get_json() or {}
-        state['simulation_running'] = data.get('run', True)
-        return jsonify({'success': True})
-
-@app.route('/api/admin/users')
-def admin_get_users():
-    if 'user' not in session or users.get(session['user'], {}).get('role') != 'admin': return jsonify({'error': 'Unauthorized'}), 403
-    safe_users = {k: {v_k: v_v for v_k, v_v in v.items() if v_k != 'password'} for k, v in users.items()}
-    return jsonify(safe_users)
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    if 'user' not in session
