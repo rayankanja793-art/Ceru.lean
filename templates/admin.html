@@ -2,146 +2,124 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SwiftPitch - Admin Control Deck</title>
+    <title>SwiftPitch - Operations Control</title>
     <style>
-        body { background-color: #0b1118; color: #ffffff; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; background-color: #1a1515; padding: 15px 25px; border-radius: 10px; border: 1px solid #3a1c1c; margin-bottom: 25px; }
-        .logo { font-size: 22px; font-weight: bold; color: #ff3333; letter-spacing: 1px; }
-        .nav-links a { color: #88a0b0; text-decoration: none; font-weight: bold; margin-left: 20px; }
-        .nav-links a:hover { color: #ffffff; }
-        
-        .admin-grid { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
-        @media (max-width: 1000px) { .admin-grid { grid-template-columns: 1fr; } }
-        
-        .card { background-color: #121b26; border-radius: 10px; padding: 25px; border: 1px solid #1c2a39; margin-bottom: 20px; }
-        h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 10px; color: #ff3333; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
-        
-        /* Master Stats Displays */
-        .stat-box { background-color: #0b1118; border: 1px solid #1c2a39; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-        .stat-value { font-size: 36px; font-weight: bold; font-family: monospace; }
-        .house-green { color: #00ff66; }
-        
-        /* Control Toggles */
-        .control-panel { display: flex; flex-direction: column; gap: 15px; }
-        button { width: 100%; padding: 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; transition: background 0.2s, transform 0.1s; }
-        button:active { transform: scale(0.99); }
-        .btn-start { background-color: #00ff66; color: #0b1118; }
-        .btn-start:hover { background-color: #00cc55; }
-        .btn-stop { background-color: #ff3333; color: white; }
-        .btn-stop:hover { background-color: #cc2222; }
-        
-        /* Live Engine Logs Terminal */
-        .terminal-box { background-color: #05080c; border: 1px solid #1c2a39; border-radius: 6px; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 13px; color: #00ff66; max-height: 400px; overflow-y: auto; line-height: 1.6; }
-        .status-pill { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
-        .pill-running { background-color: rgba(0, 255, 102, 0.1); color: #00ff66; border: 1px solid #00ff66; }
-        .pill-stopped { background-color: rgba(255, 51, 51, 0.1); color: #ff3333; border: 1px solid #ff3333; }
+        body { background-color: #070b11; color: #e1e7ed; font-family: 'Segoe UI', sans-serif; padding: 25px; margin: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ff3344; padding-bottom: 15px; margin-bottom: 25px; }
+        .vault-card { background: linear-gradient(135deg, #1f1215 0%, #121b26 100%); border: 1px solid #ff3344; padding: 20px; border-radius: 8px; font-size: 24px; color: #ffcc00; font-weight: bold; margin-bottom: 25px; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
+        .card { background: #121b26; border: 1px solid #1c2a39; padding: 20px; border-radius: 8px; }
+        h3 { margin-top: 0; color: #88a0b0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; margin-top: 10px; }
+        th, td { padding: 10px; border-bottom: 1px solid #1c2a39; font-size: 13px; }
+        th { color: #88a0b0; }
+        button { padding: 10px 16px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+        .btn-green { background: #00ff66; color: #0b1118; }
+        .btn-red { background: #ff3344; color: white; }
+        .log-box { font-family: monospace; font-size: 11px; background: #070b11; padding: 15px; border-radius: 6px; height: 250px; overflow-y: auto; color: #a4b3c6; line-height: 1.5; }
     </style>
 </head>
 <body>
 
-<div class="navbar">
-    <div class="logo">🛡️ SWIFTPITCH ADMIN PANEL</div>
-    <div class="nav-links">
-        <a href="/">Go To Dashboard</a>
-        <a href="/logout" style="color: #ff3333;">Logout</a>
+<div class="header">
+    <div>
+        <h1 style="margin:0; color:#ff3344; font-size:24px;">🛡️ Administrative Control Deck</h1>
+        <span style="font-size:12px; color:#88a0b0;">System Operations & Financial Auditing</span>
     </div>
+    <a href="/" style="color:#00ff66; text-decoration:none; font-weight:bold; font-size:14px;">← Back to Mainboard</a>
 </div>
 
-<div class="admin-grid">
-    
-    <div>
-        <div class="card">
-            <h3>⚙️ Simulation Engine Management</h3>
-            <p style="color: #88a0b0; font-size: 14px; margin-bottom: 20px;">
-                Use the switches below to pause or resume the background match simulator loops. Pausing halts match times, scoring probabilities, and round sequences globally.
-            </p>
-            
-            <div style="margin-bottom: 20px;">
-                <span>Engine Status: </span>
-                <span id="engine-status-pill" class="status-pill pill-running">RUNNING</span>
-            </div>
+<div class="vault-card">
+    💰 Company Vault Asset Balance: <span id="vault-display">0.00</span> KSH
+</div>
 
-            <div class="control-panel">
-                <button class="btn-start" onclick="setSimulationState(true)">▶ START MASTER SIMULATION</button>
-                <button class="btn-stop" onclick="setSimulationState(false)">⏸ STOP MASTER SIMULATION</button>
-            </div>
+<div class="grid">
+    <div>
+        <div class="card" style="margin-bottom: 25px;">
+            <h3>👥 User Base Ledger Accounts</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Account Email</th>
+                        <th>Phone Reference</th>
+                        <th>User Wallet</th>
+                        <th>Bonus Allocation</th>
+                        <th>Bonus Status</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body"></tbody>
+            </table>
         </div>
 
         <div class="card">
-            <h3>📊 Live Match Activity Logs</h3>
-            <div class="terminal-box" id="admin-match-logs">
-                [SYSTEM DETECTED]: Establishing communication loop links...
+            <h3>⚙️ Match Engine Core State</h3>
+            <p>Control global round-robin matrix simulations dynamically.</p>
+            <div style="display: flex; gap: 15px;">
+                <button class="btn-green" onclick="toggleEngine(true)">Resume Match Simulation</button>
+                <button class="btn-red" onclick="toggleEngine(false)">Halt Match Simulation</button>
             </div>
         </div>
     </div>
 
     <div>
-        <div class="card">
-            <h3>💰 Vault Liquidity Ledger</h3>
-            
-            <div class="stat-box">
-                <div style="color: #88a0b0; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Company Vault Balance</div>
-                <div class="stat-value house-green"><span id="admin-house-balance">500000.00</span> KSH</div>
-            </div>
-            
-            <p style="font-size: 12px; color: #88a0b0; margin: 10px 0 0 0; line-height: 1.4;">
-                💡 This balance tracks automated additions from consumer user deposits / lost wagers and handles wagers extracted from won betslips or aviator cashout milestones automatically.
-            </p>
-        </div>
-        
-        <div class="card">
-            <h3>🔒 Security Protocols</h3>
-            <p style="font-size: 13px; color: #88a0b0; line-height: 1.5; margin: 0;">
-                Regular user profiles attempting manual route configurations toward `/admin` are systematically dropped with an HTTP 403 authorization error payload code block response.
-            </p>
+        <div class="card" style="height: 100%; box-sizing: border-box;">
+            <h3>📜 Transaction & Event Logs</h3>
+            <div class="log-box" id="admin-logs"></div>
         </div>
     </div>
-
 </div>
 
 <script>
-    // System thread tracking loop executing updates every 500ms
-    setInterval(() => {
+    function updateAdminState() {
+        // Fetch core system state
         fetch('/api/state')
-        .then(res => res.json())
+        .then(r => r.json())
         .then(data => {
-            // Update global house balance parameters
-            document.getElementById('admin-house-balance').innerText = data.house_balance.toFixed(2);
-            
-            // Dynamic pill states 
-            const statusPill = document.getElementById('engine-status-pill');
-            if (data.simulation_running) {
-                statusPill.innerText = "RUNNING";
-                statusPill.className = "status-pill pill-running";
-            } else {
-                statusPill.innerText = "PAUSED / STOPPED";
-                statusPill.className = "status-pill pill-stopped";
+            if(data.user_role !== 'admin') {
+                window.location.href = '/';
+                return;
             }
-
-            // Sync master match activity log feeds
-            if (data.match_logs.length > 0) {
-                document.getElementById('admin-match-logs').innerHTML = data.match_logs.reverse().join('<br>');
-            } else {
-                document.getElementById('admin-match-logs').innerText = "[SYSTEM LOGS]: No matches finalized in this server cycle session yet.";
+            document.getElementById('vault-display').innerText = data.house_balance.toFixed(2);
+            
+            if(data.match_logs.length > 0) {
+                document.getElementById('admin-logs').innerHTML = data.match_logs.slice().reverse().join('<br>');
             }
         });
-    }, 500);
 
-    // Administrative Command Hook payload trigger
-    function setSimulationState(runFlag) {
+        // Fetch granular user ledger details
+        fetch('/api/admin/users')
+        .then(r => r.json())
+        .then(users => {
+            let html = '';
+            for (let email in users) {
+                let u = users[email];
+                let bonusStatus = u.bonus_locked ? '<span style="color:#ff3344;">Locked</span>' : '<span style="color:#00ff66;">Liquidated</span>';
+                html += `
+                    <tr>
+                        <td><strong>${email}</strong> <span style="font-size:10px; color:#88a0b0;">(${u.role})</span></td>
+                        <td>${u.phone}</td>
+                        <td style="color:#00ff66; font-weight:bold;">${u.balance.toFixed(2)} KSH</td>
+                        <td>${u.bonus.toFixed(2)} KSH</td>
+                        <td>${bonusStatus}</td>
+                    </tr>`;
+            }
+            document.getElementById('user-table-body').innerHTML = html;
+        });
+    }
+
+    function toggleEngine(runFlag) {
         fetch('/admin/toggle', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ run: runFlag })
         })
-        .then(res => res.json())
-        .then(d => {
-            if (d.success) {
-                alert("Administrative command confirmed: Engine execution state toggled.");
-            }
-        });
+        .then(r => r.json())
+        .then(() => updateAdminState());
     }
+
+    // High frequency operational updates
+    setInterval(updateAdminState, 1000);
+    updateAdminState();
 </script>
 </body>
 </html>
