@@ -52,6 +52,7 @@
             gap: 20px;
         }
 
+        /* Admin Vault Masking - Hidden from regular users by default */
         #admin-vault-container {
             display: none;
             background: rgba(255, 204, 0, 0.1);
@@ -116,6 +117,7 @@
             text-transform: uppercase;
         }
 
+        /* --- TRANSACTION OPTIONS --- */
         .transaction-box form {
             display: flex;
             gap: 8px;
@@ -139,7 +141,7 @@
             cursor: pointer;
         }
 
-        /* --- ENGINE PHASE CLOCK --- */
+        /* --- SYSTEM TIMELINE COUNTDOWN --- */
         .clock-banner {
             background: var(--bg-dark);
             border: 1px solid var(--border-color);
@@ -149,7 +151,7 @@
             margin-bottom: 15px;
         }
 
-        /* --- AVIATOR INTERFACE --- */
+        /* --- AVIATOR GAME STYLING --- */
         .aviator-panel {
             text-align: center;
             margin-bottom: 20px;
@@ -175,9 +177,17 @@
             border-radius: 4px;
             cursor: pointer;
             text-transform: uppercase;
+            transition: all 0.2s ease;
         }
 
-        /* --- SPORTS MATCH FIXTURES --- */
+        button:disabled {
+            background: #232d38 !important;
+            color: #607585 !important;
+            cursor: not-allowed !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        /* --- MATCHES AND ODDS --- */
         .league-section {
             margin-bottom: 25px;
         }
@@ -187,9 +197,6 @@
             font-size: 15px;
             margin-bottom: 10px;
             font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }
 
         .match-row {
@@ -218,6 +225,8 @@
             cursor: pointer;
             min-width: 55px;
             text-align: center;
+            font-weight: bold;
+            font-family: monospace;
         }
 
         .odds-btn:hover {
@@ -225,13 +234,12 @@
         }
 
         .odds-btn.selected {
-            background: var(--accent-green);
-            color: var(--bg-dark);
-            font-weight: bold;
-            border-color: var(--accent-green);
+            background: var(--accent-blue) !important;
+            color: var(--bg-dark) !important;
+            border-color: var(--accent-blue) !important;
         }
 
-        /* --- BETSLIP & LOGS --- */
+        /* --- SLIPS AND LOGS --- */
         .slip-item {
             background: var(--bg-dark);
             padding: 10px;
@@ -258,12 +266,13 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            text-align: left;
+            font-size: 12px;
         }
 
         th, td {
-            padding: 5px;
+            padding: 6px 4px;
             border-bottom: 1px solid #152230;
+            text-align: left;
         }
     </style>
 </head>
@@ -271,7 +280,7 @@
 
 <header>
     <div class="brand">
-        <h1>SWIFTPITCH</h1>
+        <h1>SWIFTPITCH SCORECENTER</h1>
     </div>
     
     <div class="account-bar">
@@ -295,7 +304,7 @@
 
     <div class="left-col">
         <div class="panel transaction-box" style="margin-bottom: 20px;">
-            <h3>Cashier Options</h3>
+            <h3>Banking Core</h3>
             <form action="/deposit" method="POST">
                 <input type="number" name="amount" placeholder="Min 10 KSH" min="10" required>
                 <button type="submit" style="background: var(--accent-green); color: var(--bg-dark);">Deposit</button>
@@ -307,18 +316,24 @@
         </div>
 
         <div class="panel aviator-panel">
-            <h3 style="color: #ff3366;">Aviator Engine</h3>
-            <div id="av-card" class="multiplier-card" style="color: var(--danger-red);">1.00x</div>
+            <h3 style="color: #ff3366;">Aviator Playfield</h3>
+            <div id="av-card" class="multiplier-card" style="color: var(--accent-blue);">1.00x</div>
             
             <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                 <input type="number" id="aviator-wager" placeholder="Stake KSH" value="100" min="10" style="width: 50%; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 8px; border-radius: 4px;">
-                <input type="number" id="aviator-auto-rate" placeholder="Auto Cash (e.g. 2.0)" step="0.05" min="1.1" style="width: 50%; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 8px; border-radius: 4px;">
+                <input type="number" id="aviator-auto-rate" placeholder="Auto Rate" step="0.05" min="1.1" disabled style="width: 50%; background: #1b2634; border: 1px solid var(--border-color); color: #556677; padding: 8px; border-radius: 4px; transition: all 0.2s;">
             </div>
-            <button id="aviator-btn" class="aviator-bet-btn" onclick="handleAviatorAction()" style="background: var(--accent-green); color: var(--bg-dark);">Place Wager</button>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 4px 6px; background: var(--bg-dark); border-radius: 4px; font-size: 13px;">
+                <span style="color: var(--text-muted);">Auto Cash Out Mode</span>
+                <button id="auto-toggle-btn" onclick="toggleAutoCashMode()" style="background: #2c3e50; color: white; border: none; padding: 4px 10px; font-size: 11px; border-radius: 3px; font-weight: bold; cursor: pointer;">OFF</button>
+            </div>
+
+            <button id="aviator-btn" class="aviator-bet-btn" onclick="handleAviatorAction()" style="background: var(--accent-green); color: var(--bg-dark);">Place Flight Wager</button>
         </div>
 
         <div class="panel">
-            <h3>Recent Results</h3>
+            <h3>Match History logs</h3>
             <div id="match-logs" class="log-box"></div>
         </div>
     </div>
@@ -326,18 +341,18 @@
     <div class="center-col">
         <div class="panel">
             <div class="clock-banner">
-                <span id="engine-phase" style="font-weight: bold; text-transform: uppercase; color: var(--accent-blue);">BETTING PHASE</span> 
+                <span id="engine-phase" style="font-weight: bold; text-transform: uppercase;">LOADING ENGINE...</span> 
                 | Round: <span id="engine-round">1</span> 
                 | Time Remaining: <span id="engine-timer" style="color: var(--accent-gold); font-weight: bold;">0</span>s
             </div>
 
             <div class="league-section">
-                <div class="league-title">🇮🇹 Italian Simulation League</div>
+                <div class="league-title">🇮🇹 Italian Category</div>
                 <div id="italian-fixtures"></div>
             </div>
 
             <div class="league-section">
-                <div class="league-title">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Simulation League</div>
+                <div class="league-title">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Category</div>
                 <div id="english-fixtures"></div>
             </div>
         </div>
@@ -345,14 +360,16 @@
 
     <div class="right-col">
         <div class="panel" style="margin-bottom: 20px;">
-            <h3>Sports Betslip</h3>
-            <div id="slip-selections" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;"></div>
+            <h3>Slip Configurator</h3>
+            <div id="slip-selections" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
+                <p style="font-size:12px; color:var(--text-muted); text-align:center;">Click match market odds to build selection.</p>
+            </div>
             <div id="slip-totals" style="font-size: 13px; margin-bottom: 10px; padding: 5px; background: var(--bg-dark); border-radius:4px; display:none;">
-                Total Odds: <span id="slip-odds" style="color:var(--accent-gold); font-weight:bold;">1.00</span>
+                Total Slip Odds: <span id="slip-odds" style="color:var(--accent-gold); font-weight:bold;">1.00</span>
             </div>
             <div class="transaction-box">
                 <input type="number" id="sports-stake" placeholder="Stake Amount (KSH)" min="10" value="100">
-                <button onclick="submitSportsBetslip()" style="width:100%; background: var(--accent-blue); color: var(--bg-dark); margin-top: 5px;">Place Betslip</button>
+                <button onclick="submitSportsBetslip()" style="width:100%; background: var(--accent-blue); color: var(--bg-dark); margin-top: 5px;">Book Accumulator Slip</button>
             </div>
         </div>
 
@@ -362,7 +379,7 @@
         </div>
 
         <div class="panel">
-            <h3>League Standings</h3>
+            <h3>League Table Matrices</h3>
             <div id="standings-area" class="standings-box" style="max-height: 240px;">
                 <table id="standings-table">
                     <thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead>
@@ -377,210 +394,20 @@
 <script>
     let activeSelections = [];
     let currentPhase = 'BETTING';
+    let autoCashOutEnabled = false;
 
-    function updateDashboard() {
-        fetch('/api/state')
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('user-bal').innerText = data.user_balance.toFixed(2);
-                
-                const vaultContainer = document.getElementById('admin-vault-container');
-                if (data.user_role === 'admin' && data.house_balance !== null) {
-                    vaultContainer.style.display = 'block';
-                    document.getElementById('vault-bal').innerText = data.house_balance.toFixed(2);
-                } else {
-                    vaultContainer.style.display = 'none';
-                }
-
-                const bonusContainer = document.getElementById('bonus-container');
-                if (data.user_bonus > 0) {
-                    bonusContainer.style.display = 'block';
-                    document.getElementById('bonus-bal').innerText = data.user_bonus.toFixed(2);
-                    document.getElementById('bonus-status').innerText = data.user_bonus_locked ? "(LOCKED)" : "(UNLOCKED)";
-                    document.getElementById('bonus-status').style.color = data.user_bonus_locked ? "var(--danger-red)" : "var(--accent-green)";
-                } else {
-                    bonusContainer.style.display = 'none';
-                }
-
-                currentPhase = data.league_phase;
-                document.getElementById('engine-phase').innerText = currentPhase + " PHASE";
-                document.getElementById('engine-phase').style.color = currentPhase === 'BETTING' ? 'var(--accent-green)' : 'var(--danger-red)';
-                document.getElementById('engine-round').innerText = data.current_round;
-                document.getElementById('engine-timer').innerText = data.time_remaining;
-
-                const avCard = document.getElementById('av-card');
-                const avBtn = document.getElementById('aviator-btn');
-                avCard.innerText = data.aviator.multiplier.toFixed(2) + "x";
-                
-                if (data.aviator.phase === 'BETTING') {
-                    avCard.style.color = 'var(--accent-blue)';
-                    if (data.aviator.has_bet) {
-                        avBtn.innerText = "Wager Logged - Waiting...";
-                        avBtn.disabled = true;
-                        avBtn.style.background = '#34495e';
-                    } else {
-                        avBtn.innerText = "Place Flight Wager";
-                        avBtn.disabled = false;
-                        avBtn.style.background = 'var(--accent-green)';
-                    }
-                } else {
-                    avCard.style.color = 'var(--danger-red)';
-                    if (data.aviator.has_bet) {
-                        avBtn.innerText = "CASH OUT";
-                        avBtn.disabled = false;
-                        avBtn.style.background = 'var(--accent-gold)';
-                    } else {
-                        avBtn.innerText = "Flying - Locked";
-                        avBtn.disabled = true;
-                        avBtn.style.background = '#2c3e50';
-                    }
-                }
-
-                renderFixtures(data.live_matches);
-                renderLogs(data.match_logs);
-                renderMySlips(data.my_slips);
-                renderCombinedStandings(data.standings_italian, data.standings_english);
-            });
-    }
-
-    function renderFixtures(matches) {
-        const italianBox = document.getElementById('italian-fixtures');
-        const englishBox = document.getElementById('english-fixtures');
-        let itHtml = ''; let enHtml = '';
-
-        matches.forEach(m => {
-            const isLive = m.status === 'LIVE' || currentPhase === 'LIVE';
-            const displayScore = isLive ? `${m.score} (${m.minute}')` : 'VS';
-            
-            const selHome = activeSelections.find(s => s.match_id === m.id && s.prediction === '1') ? 'selected' : '';
-            const selDraw = activeSelections.find(s => s.match_id === m.id && s.prediction === 'X') ? 'selected' : '';
-            const selAway = activeSelections.find(s => s.match_id === m.id && s.prediction === '2') ? 'selected' : '';
-
-            const row = `
-                <div class="match-row">
-                    <div style="font-weight:bold; width: 45%;">${m.t1} <span style="color:var(--accent-green); font-size:11px; margin:0 4px;">${displayScore}</span> ${m.t2}</div>
-                    <div class="odds-cluster">
-                        <button class="odds-btn ${selHome}" onclick="selectOdd(${m.id}, '1', ${m.odds_home}, '${m.teams}')">${m.odds_home.toFixed(2)}</button>
-                        <button class="odds-btn ${selDraw}" onclick="selectOdd(${m.id}, 'X', ${m.odds_draw}, '${m.teams}')">${m.odds_draw.toFixed(2)}</button>
-                        <button class="odds-btn ${selAway}" onclick="selectOdd(${m.id}, '2', ${m.odds_away}, '${m.teams}')">${m.odds_away.toFixed(2)}</button>
-                    </div>
-                </div>
-            `;
-            if (m.league === 'ITALIAN') itHtml += row; else enHtml += row;
-        });
-
-        italianBox.innerHTML = itHtml || '<p style="font-size:12px; color:var(--text-muted);">No simulation data loaded.</p>';
-        englishBox.innerHTML = enHtml || '<p style="font-size:12px; color:var(--text-muted);">No simulation data loaded.</p>';
-    }
-
-    function selectOdd(matchId, prediction, odds, teams) {
-        if (currentPhase !== 'BETTING') { alert("Market locked! Round is live running."); return; }
-        activeSelections = activeSelections.filter(s => s.match_id !== matchId);
-        activeSelections.push({ match_id: matchId, prediction: prediction, odds: odds, teams: teams });
-        updateBetslipUI();
-    }
-
-    function updateBetslipUI() {
-        const box = document.getElementById('slip-selections');
-        const totals = document.getElementById('slip-totals');
-        if (activeSelections.length === 0) {
-            box.innerHTML = '<p style="font-size:12px; color:var(--text-muted); text-align:center;">Click match market odds to build selection.</p>';
-            totals.style.display = 'none'; return;
-        }
-        let html = ''; let totalOdds = 1.0;
-        activeSelections.forEach(s => {
-            totalOdds *= s.odds;
-            html += `
-                <div class="slip-item">
-                    <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                        <span>${s.teams}</span>
-                        <span onclick="removeSelection(${s.match_id})" style="color:var(--danger-red); cursor:pointer;">✕</span>
-                    </div>
-                    <div style="margin-top:4px; color:var(--accent-green);">Selection: [${s.prediction}] @ ${s.odds.toFixed(2)}</div>
-                </div>
-            `;
-        });
-        box.innerHTML = html; totals.style.display = 'block';
-        document.getElementById('slip-odds').innerText = totalOdds.toFixed(2);
-    }
-
-    function removeSelection(matchId) {
-        activeSelections = activeSelections.filter(s => s.match_id !== matchId);
-        updateBetslipUI();
-    }
-
-    function submitSportsBetslip() {
-        const stake = parseFloat(document.getElementById('sports-stake').value);
-        if (activeSelections.length === 0) { alert("Selection slip is empty."); return; }
-
-        fetch('/api/sports/bet', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ selections: activeSelections, stake: stake })
-        }).then(res => res.json()).then(data => {
-            alert(data.message);
-            if (data.success) { activeSelections = []; updateBetslipUI(); updateDashboard(); }
-        });
-    }
-
-    function handleAviatorAction() {
-        const btnText = document.getElementById('aviator-btn').innerText;
-        if (btnText.includes("PLACE")) {
-            const stake = parseFloat(document.getElementById('aviator-wager').value);
-            const autoRateInput = document.getElementById('aviator-auto-rate').value;
-            const autoCashout = autoRateInput ? parseFloat(autoRateInput) : null;
-
-            fetch('/api/aviator/bet', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ stake: stake, auto_cashout: autoCashout })
-            }).then(res => res.json()).then(data => { 
-                if (!data.success) alert("Wager verification rejected."); 
-                else updateDashboard();
-            });
-        } else if (btnText.includes("CASH")) {
-            fetch('/api/aviator/cashout', { method: 'POST' })
-            .then(res => res.json())
-            .then(data => { 
-                if (data.success) alert("Payout secured: " + data.winnings.toFixed(2) + " KSH"); 
-                updateDashboard();
-            });
-        }
-    }
-
-    function renderLogs(logs) {
-        document.getElementById('match-logs').innerHTML = logs.reverse().map(l => `<div class="log-entry">${l}</div>`).join('');
-    }
-
-    function renderMySlips(slips) {
-        const box = document.getElementById('my-slips');
-        if (!slips || slips.length === 0) { box.innerHTML = '<div style="color:var(--text-muted);">No archived wagers.</div>'; return; }
-        box.innerHTML = slips.reverse().map(s => {
-            let color = 'white';
-            if (s.status === 'WON') color = 'var(--accent-green)';
-            if (s.status === 'LOST') color = 'var(--danger-red)';
-            return `<div style="border-bottom:1px solid #152230; padding:6px 0;">
-                <strong>${s.type}</strong> (${s.stake} KSH) - <span style="color:${color}; font-weight:bold;">${s.status}</span><br>
-                <span style="font-size:11px; color:var(--text-muted);">${s.desc}</span>
-            </div>`;
-        }).join('');
-    }
-
-    function renderCombinedStandings(it, en) {
-        const body = document.getElementById('standings-body');
-        let html = `<tr><td colspan="6" style="background:#1a2634; color:var(--accent-blue); font-weight:bold; text-align:center;">ITALIAN LEAGUE</td></tr>`;
-        Object.entries(it).sort((a,b) => b[1].points - a[1].points).forEach(([team, stats]) => {
-            html += `<tr><td>${team}</td><td>${stats.played}</td><td>${stats.won}</td><td>${stats.draw}</td><td>${stats.lost}</td><td style="color:var(--accent-green); font-weight:bold;">${stats.points}</td></tr>`;
-        });
-        html += `<tr><td colspan="6" style="background:#1a2634; color:var(--accent-blue); font-weight:bold; text-align:center;">ENGLISH LEAGUE</td></tr>`;
-        Object.entries(en).sort((a,b) => b[1].points - a[1].points).forEach(([team, stats]) => {
-            html += `<tr><td>${team}</td><td>${stats.played}</td><td>${stats.won}</td><td>${stats.draw}</td><td>${stats.lost}</td><td style="color:var(--accent-green); font-weight:bold;">${stats.points}</td></tr>`;
-        });
-        body.innerHTML = html;
-    }
-
-    setInterval(updateDashboard, 1000);
-    updateDashboard();
-</script>
-</body>
-</html>
+    function toggleAutoCashMode() {
+        const toggleBtn = document.getElementById('auto-toggle-btn');
+        const rateInput = document.getElementById('aviator-auto-rate');
+        autoCashOutEnabled = !autoCashOutEnabled;
+        
+        if (autoCashOutEnabled) {
+            toggleBtn.innerText = "ON";
+            toggleBtn.style.background = "var(--accent-blue)";
+            toggleBtn.style.color = "var(--bg-dark)";
+            rateInput.disabled = false;
+            rateInput.style.background = "var(--bg-dark)";
+            rateInput.style.color = "white";
+            rateInput.value = "2.00";
+        } else {
+            toggleBtn.innerText = "OFF";
