@@ -4,15 +4,27 @@ import time
 import random
 
 app = Flask(__name__)
+# Production safety fallback for the session secret key
 app.secret_key = os.environ.get('SECRET_KEY', 'swiftpitch_clean_slate_2026')
 
 # --- LEAGUE CONTEXT CONFIGURATIONS ---
-ITALIAN_TEAMS = ["Roma", "Juventus", "Milaan Reds", "Torino", "Fiorentina", "Bologna", "Sassuolo", "Lazio", "Verona", "Atlanta", "Monza", "Cremonese", "Leece", "Udinese", "Spenzia", "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"]
-ENGLISH_TEAMS = ["Manchester blue", "spurs", "A.Villa", "London blues", "Manchester red", "New castle", "Everton", "Bournemouth", "N. forrest", "Brighton", "London reds", "Brentford", "Wolves", "west Ham", "Southampton", "Fulham", "Liverpool", "C.Palace", "Leicester", "Leeds"]
+ITALIAN_TEAMS = [
+    "Roma", "Juventus", "Milaan Reds", "Torino", "Fiorentina", 
+    "Bologna", "Sassuolo", "Lazio", "Verona", "Atlanta", 
+    "Monza", "Cremonese", "Leece", "Udinese", "Spenzia", 
+    "Empoli", "Napoli", "Samdoria", "Salernitana", "Milan Blues"
+]
+
+ENGLISH_TEAMS = [
+    "Manchester blue", "spurs", "A.Villa", "London blues", "Manchester red", 
+    "New castle", "Everton", "Bournemouth", "N. forrest", "Brighton", 
+    "London reds", "Brentford", "Wolves", "west Ham", "Southampton", 
+    "Fulham", "Liverpool", "C.Palace", "Leicester", "Leeds"
+]
 
 # Global Application State Engine
 state = {
-    'house_balance': 750000.0,       # Restricted Admin visibility asset
+    'house_balance': 750000.0,       # Restricted Admin balance tracking
     'simulation_running': True,     
     'last_update': time.time(),
     'current_round': 1,
@@ -55,7 +67,7 @@ def init_standings():
 
 # --- ROUND-ROBIN LEAGUE FIXTURE GENERATOR ---
 def build_round_robin_schedule(teams, league_tag):
-    """Generates a perfect round-robin fixture matrix where everyone plays everyone once"""
+    """Generates a perfect 19-round fixture matrix where every team plays each other once"""
     rotation = list(teams)
     random.shuffle(rotation)
     n = len(rotation)
@@ -109,7 +121,7 @@ def load_league_round_fixtures():
         state['pending_matches_italian'] = []
         state['pending_matches_english'] = []
 
-# Initialize systems
+# Initialize engine systems on compilation
 init_standings()
 state['season_fixtures_italian'] = build_round_robin_schedule(ITALIAN_TEAMS, 'ITALIAN')
 state['season_fixtures_english'] = build_round_robin_schedule(ENGLISH_TEAMS, 'ENGLISH')
@@ -133,7 +145,7 @@ def dynamic_engine_loop():
         if state['aviator']['multiplier'] > random.uniform(1.3, 6.5):
             state['aviator']['phase'] = 'BETTING'
             state['aviator']['start'] = now
-            state['aviator']['stakes'] = {} # House collects uncollected stakes automatically
+            state['aviator']['stakes'] = {} # House collects un-cashed stakes automatically
 
     if not state['simulation_running']:
         return
@@ -144,7 +156,7 @@ def dynamic_engine_loop():
         if match['status'] == 'LIVE':
             match['minute'] += int(dt * 8) # Match acceleration multiplier
             
-            # Goal logic parameter
+            # Simulated Goal Logic
             if random.random() < 0.03:
                 s1, s2 = map(int, match['score'].split('-'))
                 if random.choice([True, False]): s1 += 1
@@ -180,7 +192,7 @@ def finalize_match_statistics(match):
         
     state['match_logs'].append(f"[{match['league']}] Rd {state['current_round']} | {match['teams']} ({match['score']})")
 
-# --- VIEWS & API DISPATCH PIPELINES ---
+# --- VIEWS & PUBLIC DISPATCH PIPELINES ---
 @app.route('/')
 def index():
     if 'user' not in session or session['user'] not in users:
@@ -209,6 +221,7 @@ def deposit():
         if amount >= 10.0:
             user['balance'] += amount
             state['house_balance'] += amount
+            # Welcome Bonus Liquidation Check
             if user['bonus_locked'] and amount >= 50.0:
                 user['balance'] += user['bonus']
                 user['bonus'] = 0.0
@@ -225,6 +238,7 @@ def withdraw():
             state['house_balance'] -= amount
     return redirect(url_for('index'))
 
+# --- AVIATOR INTERACTIVE ENDPOINTS ---
 @app.route('/api/aviator/bet', methods=['POST'])
 def aviator_bet():
     user = users.get(session.get('user'))
@@ -249,14 +263,6 @@ def aviator_cashout():
         state['house_balance'] -= winnings
         return jsonify({'success': True, 'winnings': winnings})
     return jsonify({'success': False})
-
-@app.route('/admin/toggle', methods=['POST'])
-def toggle_sim():
-    user = users.get(session.get('user'), {})
-    if user.get('role') != 'admin': return "Unauthorized", 403
-    data = request.get_json() or {}
-    state['simulation_running'] = data.get('run', True)
-    return jsonify({'success': True})
 
 @app.route('/api/state')
 def get_state():
@@ -289,6 +295,35 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+# --- SECURE OPERATIONS CONTROL ROUTES ---
+@app.route('/admin')
+def admin_dashboard():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    curr_user = users.get(session['user'])
+    if not curr_user or curr_user.get('role') != 'admin':
+        return "Access Denied: Unauthorized Context", 403
+        
+    return render_template('admin.html', user=curr_user)
+
+@app.route('/admin/toggle', methods=['POST'])
+def toggle_sim():
+    user = users.get(session.get('user'), {})
+    if user.get('role') != 'admin': return "Unauthorized", 403
+    data = request.get_json() or {}
+    state['simulation_running'] = data.get('run', True)
+    return jsonify({'success': True})
+
+@app.route('/api/admin/users')
+def admin_get_users():
+    if 'user' not in session or users.get(session['user'], {}).get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    # Strip user passwords before network transmission
+    safe_users = {k: {v_k: v_v for v_k, v_v in v.items() if v_k != 'password'} for k, v in users.items()}
+    return jsonify(safe_users)
+
+# --- WEB OVERLAY WRAPPER RUNNER ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
