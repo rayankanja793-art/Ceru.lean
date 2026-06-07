@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SwiftPitch - League Dashboard</title>
+    <title>SwiftPitch - ScoreCenter</title>
     <style>
         body { background-color: #0b1118; color: #ffffff; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; }
         .navbar { display: flex; justify-content: space-between; align-items: center; background: #121b26; padding: 15px 25px; border-radius: 8px; border: 1px solid #1c2a39; margin-bottom: 20px; }
@@ -11,20 +11,26 @@
         .highlight { color: #00ff66; font-weight: bold; }
         .vault-box { display: none; background: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; padding: 4px 10px; border-radius: 4px; color: #ffcc00; }
         
-        .layout-grid { display: grid; grid-template-columns: 400px 1fr 300px; gap: 20px; }
-        @media (max-width: 1100px) { .layout-grid { grid-template-columns: 1fr; } }
+        .layout-grid { display: grid; grid-template-columns: 420px 1fr 320px; gap: 20px; }
+        @media (max-width: 1200px) { .layout-grid { grid-template-columns: 1fr; } }
         
         .card { background: #121b26; border-radius: 8px; padding: 20px; border: 1px solid #1c2a39; margin-bottom: 20px; }
         h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 8px; color: #88a0b0; font-size: 13px; text-transform: uppercase; }
         
-        .scroll-window { max-height: 400px; overflow-y: auto; }
-        .match-row { display: flex; justify-content: space-between; align-items: center; background: #0b1118; padding: 10px; border-radius: 5px; margin-bottom: 8px; border: 1px solid #1c2a39; }
+        .scroll-window { max-height: 420px; overflow-y: auto; }
+        .match-row { background: #0b1118; padding: 12px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #1c2a39; }
+        .match-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .score-badge { background: #1c2a39; padding: 3px 8px; border-radius: 4px; color: #00ff66; font-family: monospace; font-weight: bold; }
         
-        .aviator-box { text-align: center; border: 2px solid #ff3333; background: linear-gradient(180deg, #121b26 0%, #221111 100%); }
-        .mult-display { font-size: 50px; font-weight: bold; color: #ff3333; margin: 10px 0; font-family: monospace; }
+        /* Interactive 1X2 Odd Component Handles */
+        .odds-row { display: flex; gap: 6px; }
+        .btn-odd { background: #1c2a39; color: #00ff66; border: 1px solid #2d3f55; padding: 6px; font-size: 12px; font-family: monospace; cursor: pointer; border-radius: 4px; flex: 1; text-align: center; }
+        .btn-odd:hover { background: #2d3f55; color: #ffffff; }
         
-        input[type="number"] { width: 100%; padding: 10px; background: #0b1118; border: 1px solid #1c2a39; color: white; margin-bottom: 10px; box-sizing: border-box; text-align: center; }
+        .aviator-box { text-align: center; border: 2px solid #ff3344; background: linear-gradient(180deg, #121b26 0%, #221111 100%); }
+        .mult-display { font-size: 52px; font-weight: bold; color: #ff3344; margin: 10px 0; font-family: monospace; }
+        
+        input[type="number"] { width: 100%; padding: 10px; background: #0b1118; border: 1px solid #1c2a39; color: white; margin-bottom: 10px; box-sizing: border-box; text-align: center; font-weight: bold; }
         button { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 8px; }
         .btn-green { background: #00ff66; color: #0b1118; }
         .btn-orange { background: #ff9900; color: white; }
@@ -32,8 +38,7 @@
         
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th, td { padding: 6px; text-align: left; border-bottom: 1px solid #1c2a39; }
-        
-        .admin-deck { border: 2px dashed #ff3333; background: rgba(255,51,51,0.05); display: none; margin-bottom: 20px; padding: 15px; border-radius: 8px; }
+        .slip-preview { background: #0b1118; border: 1px dashed #00ccff; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -43,68 +48,65 @@
     <div class="wallet-panel">
         <div class="vault-box" id="admin-vault-display">🛡️ Vault: <span id="house-bal">0.00</span> KSH</div>
         <div>Wallet: <span class="highlight" id="user-bal">0.00</span> KSH <span id="bonus-box"></span></div>
+        <span id="admin-link-placeholder"></span>
         <a href="/logout" style="color: #ff3333; text-decoration: none; font-weight: bold;">Logout</a>
     </div>
 </div>
 
-<div class="admin-deck" id="admin-controls">
-    <h4 style="margin:0 0 10px 0; color:#ff3333;">🛡️ System Operator Controls</h4>
-    <div style="display: flex; gap: 10px;">
-        <button class="btn-green" onclick="sendSimToggle(true)">Start Simulation Rounds</button>
-        <button class="btn-orange" onclick="sendSimToggle(false)">Halt Simulation Rounds</button>
-    </div>
-</div>
-
 <div class="layout-grid">
-    <!-- WAGERS & FIXTURES -->
+    <!-- FIXTURE CENTER -->
     <div>
-        <div class="card aviator-box">
-            <span style="color:#ff3333; font-size:11px; font-weight:bold;" id="av-phase">LOADING</span>
-            <div class="mult-display" id="av-mult">1.00x</div>
-            <input type="number" id="av-stake-input" value="50" min="10">
-            <button class="btn-green" id="btn-av-bet" onclick="fireAviatorBet()">Place Wager</button>
-            <button class="btn-orange" id="btn-av-cash" onclick="fireAviatorCashout()" style="display:none;">Cash Out</button>
-        </div>
-
         <div class="card">
             <h3>⚽ Live Simultaneous Fixtures (<span id="round-lbl">Round 1</span>)</h3>
             <div class="scroll-window" id="live-matches"></div>
         </div>
     </div>
 
-    <!-- LEAGUE MATRIX INSTANCES -->
+    <!-- LEAGUE MATRIX MONITOR -->
     <div>
+        <!-- DYNAMIC ACTIVE WAGER SLIP -->
+        <div class="card" id="sports-slip-card" style="display: none; border: 1px solid #00ccff;">
+            <h3 style="color:#00ccff;">🎫 Match Betslip Configuration</h3>
+            <div class="slip-preview">
+                <span id="slip-teams" style="font-weight:bold;">Teams</span><br>
+                Selection: <span id="slip-pred" class="highlight">Prediction</span> @ <span id="slip-odds" style="color:#00ccff;">1.00</span>
+            </div>
+            <input type="number" id="sports-stake-input" value="100" min="10">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-green" onclick="submitSportsWager()">Book Bet Slip</button>
+                <button class="btn-orange" style="background:#ff3333;" onclick="document.getElementById('sports-slip-card').style.display='none'">Discard</button>
+            </div>
+        </div>
+
         <div class="card">
             <h3 style="color:#00ccff;">🇮🇹 Italian Serie A Standings</h3>
-            <div style="max-height: 200px; overflow-y:auto;">
-                <table>
-                    <thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead>
-                    <tbody id="ita-tbody"></tbody>
-                </table>
-            </div>
+            <div style="max-height: 180px; overflow-y:auto;"><table id="ita-table"><thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="ita-tbody"></tbody></table></div>
         </div>
 
         <div class="card">
             <h3 style="color:#ffcc00;">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier League Standings</h3>
-            <div style="max-height: 200px; overflow-y:auto;">
-                <table>
-                    <thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead>
-                    <tbody id="eng-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3>📜 Matchday Events Ledger</h3>
-            <div id="logs-box" style="height:80px; overflow-y:auto; font-family:monospace; font-size:11px; color:#88a0b0; line-height:1.4;"></div>
+            <div style="max-height: 180px; overflow-y:auto;"><table id="eng-table"><thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="eng-tbody"></tbody></table></div>
         </div>
     </div>
 
-    <!-- BANKING STATION -->
+    <!-- CASINO & ACCOUNT INFRASTRUCTURE -->
     <div>
+        <div class="card aviator-box">
+            <span style="color:#ff3344; font-size:11px; font-weight:bold;" id="av-phase">LOADING ENGINE</span>
+            <div class="mult-display" id="av-mult">1.00x</div>
+            <input type="number" id="av-stake-input" value="50" min="10">
+            <button class="btn-green" id="btn-av-bet" onclick="fireAviatorBet()">Place Flight Wager</button>
+            <button class="btn-orange" id="btn-av-cash" onclick="fireAviatorCashout()" style="display:none;">Cash Out Winnings</button>
+        </div>
+
+        <div class="card">
+            <h3>🎫 My Running Match Slips</h3>
+            <div id="my-bets-ledger" style="font-size:11px; max-height:120px; overflow-y:auto;"></div>
+        </div>
+
         <div class="card">
             <h3>💳 Safe Banking Terminal</h3>
-            <form action="/deposit" method="POST" style="margin-bottom: 15px;">
+            <form action="/deposit" method="POST" style="margin-bottom: 12px;">
                 <input type="number" name="amount" min="10" placeholder="Deposit (Min 10 KSH)" required>
                 <button type="submit" class="btn-blue">Execute Deposit</button>
             </form>
@@ -118,6 +120,31 @@
 
 <script>
     let dynamicWagerPlaced = false;
+    let selectedMatchId = null;
+    let selectedPrediction = null;
+
+    function openSportsSlip(matchId, pred, odds, teamsText) {
+        selectedMatchId = matchId;
+        selectedPrediction = pred;
+        document.getElementById('slip-teams').innerText = teamsText;
+        document.getElementById('slip-pred').innerText = pred === '1' ? 'Home Win' : pred === '2' ? 'Away Win' : 'Draw Match';
+        document.getElementById('slip-odds').innerText = odds.toFixed(2);
+        document.getElementById('sports-slip-card').style.display = 'block';
+    }
+
+    function submitSportsWager() {
+        const stakeVal = parseFloat(document.getElementById('sports-stake-input').value);
+        fetch('/api/sports/bet', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ match_id: selectedMatchId, prediction: selectedPrediction, stake: stakeVal })
+        })
+        .then(r => r.json())
+        .then(d => {
+            alert(d.message || (d.success ? "Wager placed!" : "Error booking wager."));
+            if(d.success) document.getElementById('sports-slip-card').style.display = 'none';
+        });
+    }
 
     setInterval(() => {
         fetch('/api/state')
@@ -126,14 +153,8 @@
             document.getElementById('user-bal').innerText = data.user_balance.toFixed(2);
             document.getElementById('round-lbl').innerText = 'ROUND ' + data.current_round;
             
-            // Dynamic Security Checks
             if(data.user_role === 'admin') {
-                document.getElementById('admin-controls').style.display = 'block';
-                document.getElementById('admin-vault-display').style.display = 'block';
-                document.getElementById('house-bal').innerText = data.house_balance.toFixed(2);
-            } else {
-                document.getElementById('admin-controls').style.display = 'none';
-                document.getElementById('admin-vault-display').style.display = 'none';
+                document.getElementById('admin-link-placeholder').innerHTML = '<a href="/admin" style="color:#ffcc00; text-decoration:none; margin-right:15px; font-weight:bold;">⚙️ Operations Panel</a>';
             }
 
             if(data.user_bonus_locked) {
@@ -142,7 +163,7 @@
                 document.getElementById('bonus-box').innerHTML = '';
             }
 
-            // Aviator Render State Switch
+            // Aviator Render State Machine
             document.getElementById('av-mult').innerText = data.aviator.multiplier.toFixed(2) + 'x';
             document.getElementById('av-phase').innerText = data.aviator.phase + ' TIMELINE';
 
@@ -154,36 +175,50 @@
             } else if(data.aviator.phase === 'FLYING' && dynamicWagerPlaced) {
                 document.getElementById('btn-av-bet').style.display = 'none';
                 document.getElementById('btn-av-cash').style.display = 'block';
-            } else {
-                if(!dynamicWagerPlaced) {
-                    document.getElementById('btn-av-bet').style.display = 'block';
-                    document.getElementById('btn-av-bet').disabled = true;
-                    document.getElementById('btn-av-cash').style.display = 'none';
-                }
+            } else if(data.aviator.phase === 'FLYING' && !dynamicWagerPlaced) {
+                document.getElementById('btn-av-bet').style.display = 'block';
+                document.getElementById('btn-av-bet').disabled = true;
+                document.getElementById('btn-av-cash').style.display = 'none';
             }
 
-            // Render Fixtures Lookups
+            // Dynamic Fixtures Generator Rendering
             let htmlFix = '';
             data.live_matches.forEach(m => {
                 let border = m.league === 'ITALIAN' ? '#00ccff' : '#ffcc00';
                 let timeText = m.minute >= 90 ? '<span style="color:#ff3333;font-weight:bold;">FT</span>' : `Min ${m.minute}'`;
+                let safeTeamsName = m.teams.replace(/'/g, "\\'");
+                
                 htmlFix += `
                     <div class="match-row" style="border-left: 3px solid ${border}">
-                        <div><span style="font-size:9px; color:${border}; font-weight:bold;">${m.league}</span><br><strong>${m.teams}</strong></div>
-                        <div style="text-align:right;"><span class="score-badge">${m.score}</span><br><span style="font-size:11px;">${timeText}</span></div>
+                        <div class="match-meta">
+                            <div><span style="font-size:9px; color:${border}; font-weight:bold;">${m.league}</span><br><strong>${m.teams}</strong></div>
+                            <div style="text-align:right;"><span class="score-badge">${m.score}</span><br><span style="font-size:11px;">${timeText}</span></div>
+                        </div>
+                        ${m.minute < 75 ? `
+                        <div class="odds-row">
+                            <button class="btn-odd" onclick="openSportsSlip(${m.id}, '1', ${m.odds_home}, '${safeTeamsName}')">1 (${m.odds_home})</button>
+                            <button class="btn-odd" onclick="openSportsSlip(${m.id}, 'X', ${m.odds_draw}, '${safeTeamsName}')">X (${m.odds_draw})</button>
+                            <button class="btn-odd" onclick="openSportsSlip(${m.id}, '2', ${m.odds_away}, '${safeTeamsName}')">2 (${m.odds_away})</button>
+                        </div>` : '<div style="font-size:11px;color:#88a0b0;text-align:center;">Wagering Closed</div>'}
                     </div>`;
             });
             document.getElementById('live-matches').innerHTML = htmlFix;
 
-            // Render Standings Grid Matrices
             buildTableRows(data.standings_italian, 'ita-tbody', '#00ccff');
             buildTableRows(data.standings_english, 'eng-tbody', '#ffcc00');
 
-            if(data.match_logs.length > 0) {
-                document.getElementById('logs-box').innerHTML = data.match_logs.slice().reverse().join('<br>');
-            }
+            // Render Sports Slip Histories
+            let betHtml = '';
+            data.my_sports_bets.forEach(b => {
+                let color = b.status === 'WON' ? '#00ff66' : b.status === 'LOST' ? '#ff3333' : '#00ccff';
+                betHtml += `<div style="border-bottom:1px solid #1c2a39; padding:5px 0;">
+                    <strong>${b.teams}</strong> (${b.score})<br>
+                    Stake: ${b.stake} KSH | Pred: ${b.prediction} | Status: <span style="color:${color};font-weight:bold;">${b.status}</span>
+                </div>`;
+            });
+            document.getElementById('my-bets-ledger').innerHTML = betHtml || 'No active slips registered.';
         });
-    }, 600);
+    }, 800);
 
     function buildTableRows(standingsMap, containerId, accentColor) {
         let sorted = Object.keys(standingsMap).map(name => ({name, ...standingsMap[name]})).sort((a,b) => b.points - a.points);
@@ -203,12 +238,8 @@
         })
         .then(r => r.json())
         .then(d => {
-            if(d.success) {
-                dynamicWagerPlaced = true;
-                alert("Wager logged successfully!");
-            } else {
-                alert("Insufficient funds or window closed.");
-            }
+            if(d.success) { dynamicWagerPlaced = true; alert("Aviator stake logged successfully!"); }
+            else alert("Transaction rejected.");
         });
     }
 
@@ -216,22 +247,9 @@
         fetch('/api/aviator/cashout', { method: 'POST' })
         .then(r => r.json())
         .then(d => {
-            if(d.success) {
-                dynamicWagerPlaced = false;
-                alert(`Casouht Successful! Won: ${d.winnings.toFixed(2)} KSH`);
-            } else {
-                alert("Crash sequence completed already!");
-            }
+            if(d.success) { dynamicWagerPlaced = false; alert(`Casouht Successful! Dispatched Winnings: ${d.winnings.toFixed(2)} KSH`); }
+            else alert("Crash multiplier threshold reached already!");
         });
-    }
-
-    function sendSimToggle(flag) {
-        fetch('/admin/toggle', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ run: flag })
-        })
-        .then(r => r.json());
     }
 </script>
 </body>
