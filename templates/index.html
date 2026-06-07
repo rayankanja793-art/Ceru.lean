@@ -2,116 +2,126 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SwiftPitch - ScoreCenter</title>
+    <title>SwiftPitch - Live Trading Desk</title>
     <style>
         body { background-color: #0b1118; color: #ffffff; font-family: 'Segoe UI', sans-serif; padding: 20px; margin: 0; }
         .navbar { display: flex; justify-content: space-between; align-items: center; background: #121b26; padding: 15px 25px; border-radius: 8px; border: 1px solid #1c2a39; margin-bottom: 20px; }
-        .logo { font-size: 20px; font-weight: bold; color: #00ff66; }
+        .logo { font-size: 20px; font-weight: bold; color: #00ff66; letter-spacing: 0.5px; }
         .wallet-panel { display: flex; gap: 20px; align-items: center; font-size: 15px; }
         .highlight { color: #00ff66; font-weight: bold; }
-        .vault-box { display: none; background: rgba(255, 204, 0, 0.1); border: 1px solid #ffcc00; padding: 4px 10px; border-radius: 4px; color: #ffcc00; }
         
-        .layout-grid { display: grid; grid-template-columns: 420px 1fr 320px; gap: 20px; }
-        @media (max-width: 1200px) { .layout-grid { grid-template-columns: 1fr; } }
+        .phase-banner { background: linear-gradient(90deg, #1f2d3d 0%, #121b26 100%); padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #00ccff; display: flex; justify-content: space-between; align-items: center; }
         
-        .card { background: #121b26; border-radius: 8px; padding: 20px; border: 1px solid #1c2a39; margin-bottom: 20px; }
-        h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 8px; color: #88a0b0; font-size: 13px; text-transform: uppercase; }
+        .layout-grid { display: grid; grid-template-columns: 430px 1fr 340px; gap: 20px; }
+        @media (max-width: 1300px) { .layout-grid { grid-template-columns: 1fr; } }
         
-        .scroll-window { max-height: 420px; overflow-y: auto; }
-        .match-row { background: #0b1118; padding: 12px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #1c2a39; }
-        .match-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .score-badge { background: #1c2a39; padding: 3px 8px; border-radius: 4px; color: #00ff66; font-family: monospace; font-weight: bold; }
+        .card { background: #121b26; border-radius: 8px; padding: 18px; border: 1px solid #1c2a39; margin-bottom: 20px; }
+        h3 { margin-top: 0; border-bottom: 1px solid #1c2a39; padding-bottom: 8px; color: #88a0b0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        /* Interactive 1X2 Odd Component Handles */
-        .odds-row { display: flex; gap: 6px; }
-        .btn-odd { background: #1c2a39; color: #00ff66; border: 1px solid #2d3f55; padding: 6px; font-size: 12px; font-family: monospace; cursor: pointer; border-radius: 4px; flex: 1; text-align: center; }
-        .btn-odd:hover { background: #2d3f55; color: #ffffff; }
+        .scroll-window { max-height: 520px; overflow-y: auto; padding-right: 4px; }
+        .match-row { background: #0b1118; padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #1c2a39; }
+        .match-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .score-badge { background: #1c2a39; padding: 4px 10px; border-radius: 4px; color: #00ff66; font-family: monospace; font-weight: bold; font-size: 14px; }
+        
+        .odds-row { display: flex; gap: 8px; }
+        .btn-odd { background: #1c2a39; color: #00ff66; border: 1px solid #2d3f55; padding: 8px; font-size: 11px; font-family: monospace; cursor: pointer; border-radius: 4px; flex: 1; text-align: center; font-weight: bold; transition: all 0.2s; }
+        .btn-odd:hover { background: #00ff66; color: #0b1118; }
+        .btn-odd.active-selection { background: #00ccff !important; color: #0b1118 !important; border-color: #00ccff !important; }
         
         .aviator-box { text-align: center; border: 2px solid #ff3344; background: linear-gradient(180deg, #121b26 0%, #221111 100%); }
-        .mult-display { font-size: 52px; font-weight: bold; color: #ff3344; margin: 10px 0; font-family: monospace; }
+        .mult-display { font-size: 56px; font-weight: bold; color: #ff3344; margin: 15px 0; font-family: monospace; text-shadow: 0 0 10px rgba(255,51,68,0.3); }
         
-        input[type="number"] { width: 100%; padding: 10px; background: #0b1118; border: 1px solid #1c2a39; color: white; margin-bottom: 10px; box-sizing: border-box; text-align: center; font-weight: bold; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-bottom: 8px; }
+        input[type="number"] { width: 100%; padding: 12px; background: #0b1118; border: 1px solid #1c2a39; color: white; margin-bottom: 10px; box-sizing: border-box; text-align: center; font-weight: bold; font-size: 15px; border-radius: 4px; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         .btn-green { background: #00ff66; color: #0b1118; }
         .btn-orange { background: #ff9900; color: white; }
         .btn-blue { background: #00ccff; color: #0b1118; }
         
         table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { padding: 6px; text-align: left; border-bottom: 1px solid #1c2a39; }
-        .slip-preview { background: #0b1118; border: 1px dashed #00ccff; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px; }
+        th, td { padding: 7px 5px; text-align: left; border-bottom: 1px solid #1c2a39; }
+        
+        .slip-item { background: #0b1118; border-left: 3px solid #00ccff; padding: 8px; margin-bottom: 8px; border-radius: 0 4px 4px 0; font-size: 11px; position: relative; }
+        .slip-item .remove-btn { position: absolute; right: 8px; top: 8px; color: #ff3344; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="navbar">
-    <div class="logo">SWIFTPITCH SCORECENTER</div>
+    <div class="logo">🦅 SWIFTPITCH ACCELERATOR</div>
     <div class="wallet-panel">
-        <div class="vault-box" id="admin-vault-display">🛡️ Vault: <span id="house-bal">0.00</span> KSH</div>
-        <div>Wallet: <span class="highlight" id="user-bal">0.00</span> KSH <span id="bonus-box"></span></div>
+        <div>Wallet Asset Balance: <span class="highlight" id="user-bal">0.00</span> KSH <span id="bonus-box"></span></div>
         <span id="admin-link-placeholder"></span>
-        <a href="/logout" style="color: #ff3333; text-decoration: none; font-weight: bold;">Logout</a>
+        <a href="/logout" style="color: #ff3344; text-decoration: none; font-weight: bold; font-size: 14px;">Logout Space</a>
+    </div>
+</div>
+
+<div class="phase-banner">
+    <div>
+        <span style="font-size: 12px; color: #88a0b0; text-transform: uppercase; letter-spacing: 1px;">Current System Engine Phase</span>
+        <h2 id="phase-title" style="margin: 4px 0 0 0; font-size: 20px; color: #00ccff;">LOADING...</h2>
+    </div>
+    <div style="text-align: right;">
+        <span style="font-size: 11px; color: #88a0b0;">ROUND METRIC TIMELINE</span>
+        <div id="phase-countdown" style="font-size: 24px; font-family: monospace; font-weight: bold; color: #ffffff;">00s</div>
     </div>
 </div>
 
 <div class="layout-grid">
-    <!-- FIXTURE CENTER -->
     <div>
         <div class="card">
-            <h3>⚽ Live Simultaneous Fixtures (<span id="round-lbl">Round 1</span>)</h3>
-            <div class="scroll-window" id="live-matches"></div>
+            <h3>⚽ Live Round Fixtures</h3>
+            <div class="scroll-window" id="live-matches-box"></div>
         </div>
     </div>
 
-    <!-- LEAGUE MATRIX MONITOR -->
     <div>
-        <!-- DYNAMIC ACTIVE WAGER SLIP -->
-        <div class="card" id="sports-slip-card" style="display: none; border: 1px solid #00ccff;">
-            <h3 style="color:#00ccff;">🎫 Match Betslip Configuration</h3>
-            <div class="slip-preview">
-                <span id="slip-teams" style="font-weight:bold;">Teams</span><br>
-                Selection: <span id="slip-pred" class="highlight">Prediction</span> @ <span id="slip-odds" style="color:#00ccff;">1.00</span>
+        <div class="card" id="multibet-card" style="display: none; border: 2px solid #00ccff;">
+            <h3 style="color:#00ccff; border-bottom-color:#00ccff;">🎫 Multi-Bet Accumulator Slip</h3>
+            <div id="slip-selections-container"></div>
+            <div style="display:flex; justify-content:space-between; margin: 10px 0; font-size:14px;">
+                <span>Total Multiplier Odds:</span>
+                <span id="slip-total-odds" style="color:#00ccff; font-weight:bold; font-family:monospace;">1.00x</span>
             </div>
             <input type="number" id="sports-stake-input" value="100" min="10">
             <div style="display:flex; gap:10px;">
-                <button class="btn-green" onclick="submitSportsWager()">Book Bet Slip</button>
-                <button class="btn-orange" style="background:#ff3333;" onclick="document.getElementById('sports-slip-card').style.display='none'">Discard</button>
+                <button class="btn-green" onclick="submitAccumulatorSlip()">Book Multi-Bet</button>
+                <button class="btn-orange" style="background:#ff3344;" onclick="clearBetslip()">Clear All</button>
             </div>
         </div>
 
         <div class="card">
-            <h3 style="color:#00ccff;">🇮🇹 Italian Serie A Standings</h3>
-            <div style="max-height: 180px; overflow-y:auto;"><table id="ita-table"><thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="ita-tbody"></tbody></table></div>
+            <h3 style="color:#00ccff;">🇮🇹 Serie A Standings</h3>
+            <div style="max-height: 190px; overflow-y:auto;"><table id="ita-table"><thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="ita-tbody"></tbody></table></div>
         </div>
 
         <div class="card">
-            <h3 style="color:#ffcc00;">🏴󠁧󠁢󠁥󠁮󠁧󠁿 English Premier League Standings</h3>
-            <div style="max-height: 180px; overflow-y:auto;"><table id="eng-table"><thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="eng-tbody"></tbody></table></div>
+            <h3 style="color:#ffcc00;">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League Standings</h3>
+            <div style="max-height: 190px; overflow-y:auto;"><table id="eng-table"><thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>PTS</th></tr></thead><tbody id="eng-tbody"></tbody></table></div>
         </div>
     </div>
 
-    <!-- CASINO & ACCOUNT INFRASTRUCTURE -->
     <div>
         <div class="card aviator-box">
-            <span style="color:#ff3344; font-size:11px; font-weight:bold;" id="av-phase">LOADING ENGINE</span>
+            <span style="color:#ff3344; font-size:11px; font-weight:bold; letter-spacing:1px;" id="av-phase">AVIATOR SYSTEM</span>
             <div class="mult-display" id="av-mult">1.00x</div>
-            <input type="number" id="av-stake-input" value="50" min="10">
+            <input type="number" id="av-stake-input" value="100" min="10">
             <button class="btn-green" id="btn-av-bet" onclick="fireAviatorBet()">Place Flight Wager</button>
             <button class="btn-orange" id="btn-av-cash" onclick="fireAviatorCashout()" style="display:none;">Cash Out Winnings</button>
         </div>
 
         <div class="card">
-            <h3>🎫 My Running Match Slips</h3>
-            <div id="my-bets-ledger" style="font-size:11px; max-height:120px; overflow-y:auto;"></div>
+            <h3>🎫 My Running / Settled Slips</h3>
+            <div id="my-slips-ledger" style="font-size:11px; max-height:160px; overflow-y:auto;"></div>
         </div>
 
         <div class="card">
-            <h3>💳 Safe Banking Terminal</h3>
+            <h3>💳 Safe Banking Core</h3>
             <form action="/deposit" method="POST" style="margin-bottom: 12px;">
-                <input type="number" name="amount" min="10" placeholder="Deposit (Min 10 KSH)" required>
+                <input type="number" name="amount" min="10" placeholder="Deposit Amount (KSH)" required>
                 <button type="submit" class="btn-blue">Execute Deposit</button>
             </form>
             <form action="/withdraw" method="POST">
-                <input type="number" name="amount" min="100" placeholder="Withdraw (Min 100 KSH)" required>
+                <input type="number" name="amount" min="100" placeholder="Withdrawal Amount (KSH)" required>
                 <button type="submit" class="btn-orange">Execute Withdrawal</button>
             </form>
         </div>
@@ -119,108 +129,164 @@
 </div>
 
 <script>
-    let dynamicWagerPlaced = false;
-    let selectedMatchId = null;
-    let selectedPrediction = null;
+    let activeBetslip = []; // Dynamic store for tracking multi-bet configurations
+    let aviatorWagerActive = false;
 
-    function openSportsSlip(matchId, pred, odds, teamsText) {
-        selectedMatchId = matchId;
-        selectedPrediction = pred;
-        document.getElementById('slip-teams').innerText = teamsText;
-        document.getElementById('slip-pred').innerText = pred === '1' ? 'Home Win' : pred === '2' ? 'Away Win' : 'Draw Match';
-        document.getElementById('slip-odds').innerText = odds.toFixed(2);
-        document.getElementById('sports-slip-card').style.display = 'block';
+    function toggleSelectionToSlip(matchId, pred, odds, teamsText) {
+        // Remove existing prediction for the exact same match ID if present
+        activeBetslip = activeBetslip.filter(item => item.matchId !== matchId);
+        
+        // Push selection profile
+        activeBetslip.push({ matchId, pred, odds, teamsText });
+        renderBetslipUI();
     }
 
-    function submitSportsWager() {
+    function removeSlipItem(matchId) {
+        activeBetslip = activeBetslip.filter(item => item.matchId !== matchId);
+        renderBetslipUI();
+    }
+
+    function clearBetslip() {
+        activeBetslip = [];
+        renderBetslipUI();
+    }
+
+    function renderBetslipUI() {
+        const container = document.getElementById('slip-selections-container');
+        const card = document.getElementById('multibet-card');
+        
+        if(activeBetslip.length === 0) {
+            card.style.display = 'none';
+            return;
+        }
+        
+        card.style.display = 'block';
+        let html = '';
+        let totalOdds = 1.0;
+        
+        activeBetslip.forEach(item => {
+            totalOdds *= item.odds;
+            let outcomeLabel = item.pred === '1' ? 'Home Win' : (item.pred === '2' ? 'Away Win' : 'Draw Match');
+            html += `
+                <div class="slip-item">
+                    <span class="remove-btn" onclick="removeSlipItem(${item.matchId})">×</span>
+                    <strong>${item.teamsText}</strong><br>
+                    <span style="color:#00ccff;">Selection: ${outcomeLabel} @ ${item.odds.toFixed(2)}</span>
+                </div>`;
+        });
+        
+        container.innerHTML = html;
+        document.getElementById('slip-total-odds').innerText = totalOdds.toFixed(2) + 'x';
+    }
+
+    function submitAccumulatorSlip() {
         const stakeVal = parseFloat(document.getElementById('sports-stake-input').value);
+        const payloadPayload = activeBetslip.map(i => ({ match_id: i.matchId, prediction: i.pred }));
+        
         fetch('/api/sports/bet', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ match_id: selectedMatchId, prediction: selectedPrediction, stake: stakeVal })
+            body: JSON.stringify({ selections: payloadPayload, stake: stakeVal })
         })
         .then(r => r.json())
         .then(d => {
-            alert(d.message || (d.success ? "Wager placed!" : "Error booking wager."));
-            if(d.success) document.getElementById('sports-slip-card').style.display = 'none';
+            alert(d.message);
+            if(d.success) {
+                clearBetslip();
+            }
         });
     }
 
+    // High Frequency Core Loop Dynamic Polling System
     setInterval(() => {
         fetch('/api/state')
         .then(r => r.json())
         .then(data => {
             document.getElementById('user-bal').innerText = data.user_balance.toFixed(2);
-            document.getElementById('round-lbl').innerText = 'ROUND ' + data.current_round;
             
-            if(data.user_role === 'admin') {
-                document.getElementById('admin-link-placeholder').innerHTML = '<a href="/admin" style="color:#ffcc00; text-decoration:none; margin-right:15px; font-weight:bold;">⚙️ Operations Panel</a>';
-            }
-
-            if(data.user_bonus_locked) {
-                document.getElementById('bonus-box').innerHTML = `(<span style="color:#ff3333; font-size:11px;">Locked: ${data.user_bonus} KSH</span>)`;
+            // Format state header messages dynamically
+            if (data.league_phase === 'BETTING') {
+                document.getElementById('phase-title').innerText = `ROUND ${data.current_round} - OPEN FOR WAGERS`;
+                document.getElementById('phase-title').style.color = '#00ff66';
+                document.getElementById('phase-countdown').innerText = data.time_remaining + 's';
+                document.getElementById('phase-countdown').style.color = '#00ff66';
             } else {
-                document.getElementById('bonus-box').innerHTML = '';
+                document.getElementById('phase-title').innerText = `ROUND ${data.current_round} - SIMULATING MATCHES (LIVE)`;
+                document.getElementById('phase-title').style.color = '#ff9900';
+                document.getElementById('phase-countdown').innerText = data.time_remaining + 's';
+                document.getElementById('phase-countdown').style.color = '#ff9900';
             }
 
-            // Aviator Render State Machine
+            if(data.user_role === 'admin') {
+                document.getElementById('admin-link-placeholder').innerHTML = '<a href="/admin" style="color:#ffcc00; text-decoration:none; margin-right:15px; font-weight:bold; font-size:14px;">⚙️ Admin Core</a>';
+            }
+
+            // Aviator Real-time Layout Handles
             document.getElementById('av-mult').innerText = data.aviator.multiplier.toFixed(2) + 'x';
             document.getElementById('av-phase').innerText = data.aviator.phase + ' TIMELINE';
 
             if(data.aviator.phase === 'BETTING') {
-                dynamicWagerPlaced = false;
+                aviatorWagerActive = false;
                 document.getElementById('btn-av-bet').style.display = 'block';
                 document.getElementById('btn-av-bet').disabled = false;
                 document.getElementById('btn-av-cash').style.display = 'none';
-            } else if(data.aviator.phase === 'FLYING' && dynamicWagerPlaced) {
+            } else if(data.aviator.phase === 'FLYING' && aviatorWagerActive) {
                 document.getElementById('btn-av-bet').style.display = 'none';
                 document.getElementById('btn-av-cash').style.display = 'block';
-            } else if(data.aviator.phase === 'FLYING' && !dynamicWagerPlaced) {
+            } else if(data.aviator.phase === 'FLYING' && !aviatorWagerActive) {
                 document.getElementById('btn-av-bet').style.display = 'block';
                 document.getElementById('btn-av-bet').disabled = true;
                 document.getElementById('btn-av-cash').style.display = 'none';
             }
 
-            // Dynamic Fixtures Generator Rendering
+            // Construct and refresh active Match View Row maps
             let htmlFix = '';
             data.live_matches.forEach(m => {
-                let border = m.league === 'ITALIAN' ? '#00ccff' : '#ffcc00';
-                let timeText = m.minute >= 90 ? '<span style="color:#ff3333;font-weight:bold;">FT</span>' : `Min ${m.minute}'`;
-                let safeTeamsName = m.teams.replace(/'/g, "\\'");
+                let accent = m.league === 'ITALIAN' ? '#00ccff' : '#ffcc00';
+                let clockDisplay = data.league_phase === 'BETTING' ? 'Upcoming' : `Minute ${m.minute}'`;
+                let cleanTeamsName = m.teams.replace(/'/g, "\\'");
                 
+                // Track selected markers to visually stick active styling elements
+                let activeHome = activeBetslip.some(i => i.matchId === m.id && i.pred === '1') ? 'active-selection' : '';
+                let activeDraw = activeBetslip.some(i => i.matchId === m.id && i.pred === 'X') ? 'active-selection' : '';
+                let activeAway = activeBetslip.some(i => i.matchId === m.id && i.pred === '2') ? 'active-selection' : '';
+
                 htmlFix += `
-                    <div class="match-row" style="border-left: 3px solid ${border}">
+                    <div class="match-row" style="border-left:3px solid ${accent}">
                         <div class="match-meta">
-                            <div><span style="font-size:9px; color:${border}; font-weight:bold;">${m.league}</span><br><strong>${m.teams}</strong></div>
-                            <div style="text-align:right;"><span class="score-badge">${m.score}</span><br><span style="font-size:11px;">${timeText}</span></div>
+                            <div><span style="font-size:9px; color:${accent}; font-weight:bold;">${m.league} CATEGORY</span><br><strong>${m.teams}</strong></div>
+                            <div style="text-align:right;"><span class="score-badge">${m.score}</span><br><span style="font-size:11px; color:#88a0b0;">${clockDisplay}</span></div>
                         </div>
-                        ${m.minute < 75 ? `
+                        ${data.league_phase === 'BETTING' ? `
                         <div class="odds-row">
-                            <button class="btn-odd" onclick="openSportsSlip(${m.id}, '1', ${m.odds_home}, '${safeTeamsName}')">1 (${m.odds_home})</button>
-                            <button class="btn-odd" onclick="openSportsSlip(${m.id}, 'X', ${m.odds_draw}, '${safeTeamsName}')">X (${m.odds_draw})</button>
-                            <button class="btn-odd" onclick="openSportsSlip(${m.id}, '2', ${m.odds_away}, '${safeTeamsName}')">2 (${m.odds_away})</button>
-                        </div>` : '<div style="font-size:11px;color:#88a0b0;text-align:center;">Wagering Closed</div>'}
+                            <button class="btn-odd ${activeHome}" onclick="toggleSelectionToSlip(${m.id}, '1', ${m.odds_home}, '${cleanTeamsName}')">1 (${m.odds_home})</button>
+                            <button class="btn-odd ${activeDraw}" onclick="toggleSelectionToSlip(${m.id}, 'X', ${m.odds_draw}, '${cleanTeamsName}')">X (${m.odds_draw})</button>
+                            <button class="btn-odd ${activeAway}" onclick="toggleSelectionToSlip(${m.id}, '2', ${m.odds_away}, '${cleanTeamsName}')">2 (${m.odds_away})</button>
+                        </div>` : '<div style="font-size:11px; color:#ff3344; text-align:center; font-weight:bold; background:rgba(255,51,68,0.05); padding:4px; border-radius:4px;">🔒 Bets Locked Matrix Live</div>'}
                     </div>`;
             });
-            document.getElementById('live-matches').innerHTML = htmlFix;
+            document.getElementById('live-matches-box').innerHTML = htmlFix;
 
-            buildTableRows(data.standings_italian, 'ita-tbody', '#00ccff');
-            buildTableRows(data.standings_english, 'eng-tbody', '#ffcc00');
+            buildTableMatrix(data.standings_italian, 'ita-tbody', '#00ccff');
+            buildTableMatrix(data.standings_english, 'eng-tbody', '#ffcc00');
 
-            // Render Sports Slip Histories
-            let betHtml = '';
-            data.my_sports_bets.forEach(b => {
-                let color = b.status === 'WON' ? '#00ff66' : b.status === 'LOST' ? '#ff3333' : '#00ccff';
-                betHtml += `<div style="border-bottom:1px solid #1c2a39; padding:5px 0;">
-                    <strong>${b.teams}</strong> (${b.score})<br>
-                    Stake: ${b.stake} KSH | Pred: ${b.prediction} | Status: <span style="color:${color};font-weight:bold;">${b.status}</span>
-                </div>`;
+            // Render Slip Logs History
+            let slipLogHtml = '';
+            data.my_slips.forEach(s => {
+                let c = s.status === 'WON' ? '#00ff66' : (s.status === 'LOST' ? '#ff3344' : '#00ccff');
+                slipLogHtml += `
+                    <div style="border-bottom:1px solid #1c2a39; padding:6px 0; line-height:1.4;">
+                        <span style="font-size:9px; background:#1c2a39; padding:2px 4px; border-radius:3px;">${s.type}</span> 
+                        Odds: <strong>${s.total_odds}x</strong> | Stake: <strong>${s.stake} KSH</strong><br>
+                        <span style="color:#88a0b0; font-size:10px;">${s.desc}</span><br>
+                        Status: <span style="color:${c}; font-weight:bold;">${s.status}</span>
+                    </div>`;
             });
-            document.getElementById('my-bets-ledger').innerHTML = betHtml || 'No active slips registered.';
+            document.getElementById('my-slips-ledger').innerHTML = slipLogHtml || 'No slips found in this account instance.';
         });
-    }, 800);
+    }, 700);
 
-    function buildTableRows(standingsMap, containerId, accentColor) {
+    function buildTableMatrix(standingsMap, containerId, accentColor) {
         let sorted = Object.keys(standingsMap).map(name => ({name, ...standingsMap[name]})).sort((a,b) => b.points - a.points);
         let rowsHtml = '';
         sorted.forEach(t => {
@@ -238,8 +304,8 @@
         })
         .then(r => r.json())
         .then(d => {
-            if(d.success) { dynamicWagerPlaced = true; alert("Aviator stake logged successfully!"); }
-            else alert("Transaction rejected.");
+            if(d.success) { aviatorWagerActive = true; alert("Aviator flight wager accepted."); }
+            else alert("Transaction rejected. Ensure the betting timeline is open.");
         });
     }
 
@@ -247,8 +313,8 @@
         fetch('/api/aviator/cashout', { method: 'POST' })
         .then(r => r.json())
         .then(d => {
-            if(d.success) { dynamicWagerPlaced = false; alert(`Casouht Successful! Dispatched Winnings: ${d.winnings.toFixed(2)} KSH`); }
-            else alert("Crash multiplier threshold reached already!");
+            if(d.success) { aviatorWagerActive = false; alert(`Cashout Successful! Payout Received: ${d.winnings.toFixed(2)} KSH`); }
+            else alert("Crash point threshold passed!");
         });
     }
 </script>
