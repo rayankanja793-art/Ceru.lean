@@ -255,3 +255,8 @@ def toggle_simulation():
     data = request.get_json() or {}
     state['simulation_running'] = data.get('run', True)
     return jsonify({'success': True, 'running': state['simulation_running']
+if __name__ == '__main__':
+    import os
+    # Gracefully fallback to 5000 for local testing if PORT isn't set globally
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
